@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function TaskItem({ task, onEdit }: Props) {
-  const { toggleTask, removeTask } = useTaskStore();
+  const { toggleTask, removeTask, fetchProjectTaskCounts } = useTaskStore();
   const { projects } = useTaskStore();
   const project = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
 
@@ -35,7 +35,7 @@ export function TaskItem({ task, onEdit }: Props) {
     >
       <Checkbox
         checked={task.completed}
-        onChange={(e) => toggleTask(task.id, e.currentTarget.checked)}
+        onChange={(e) => { toggleTask(task.id, e.currentTarget.checked).then(fetchProjectTaskCounts); }}
         color={PRIORITY_COLORS[task.priority] || 'gray'}
         radius="xl"
         size="sm"
@@ -64,7 +64,7 @@ export function TaskItem({ task, onEdit }: Props) {
         <ActionIcon variant="subtle" size="xs" onClick={() => onEdit?.(task)}>
           <IconEdit size={14} />
         </ActionIcon>
-        <ActionIcon variant="subtle" size="xs" color="red" onClick={() => removeTask(task.id)}>
+        <ActionIcon variant="subtle" size="xs" color="red" onClick={() => removeTask(task.id).then(fetchProjectTaskCounts)}>
           <IconTrash size={14} />
         </ActionIcon>
       </Group>

@@ -1,15 +1,25 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..models import Project, User
+from ..models import Project, Task, User
 from ..schemas import ProjectCreate, ProjectOut, ProjectUpdate
 from .auth import get_current_user
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+@router.get("/task-counts")
+async def project_task_counts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Task.project_id, func.count(Task.id))
+        .where(Task.user_id == user.id, Task.completed == False, Task.project_id != None)  # noqa: E711, E712
+        .group_by(Task.project_id)
+    )
+    return {str(row[0]): row[1] for row in result.all()}
 
 
 @router.get("", response_model=list[ProjectOut])

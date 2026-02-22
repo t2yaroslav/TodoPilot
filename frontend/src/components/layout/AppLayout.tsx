@@ -29,10 +29,97 @@ import {
   IconFolder,
   IconSun,
   IconMoon,
+  IconDots,
+  IconEdit,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore, Project } from '@/stores/taskStore';
 import { QuickAddModal } from '@/components/tasks/QuickAddModal';
+
+function ProjectNavItem({ project, active, taskCount, onNavigate }: {
+  project: Project;
+  active: boolean;
+  taskCount: number;
+  onNavigate: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const [menuOpened, setMenuOpened] = useState(false);
+  const { editProject, removeProject, fetchProjectTaskCounts } = useTaskStore();
+  const navigate = useNavigate();
+
+  const handleRename = () => {
+    const newTitle = prompt('Новое название проекта:', project.title);
+    if (newTitle && newTitle !== project.title) {
+      editProject(project.id, { title: newTitle });
+    }
+  };
+
+  const handleDelete = () => {
+    if (confirm(`Удалить проект «${project.title}»? Задачи проекта останутся без проекта.`)) {
+      removeProject(project.id);
+      fetchProjectTaskCounts();
+      if (active) navigate('/inbox');
+    }
+  };
+
+  return (
+    <NavLink
+      label={project.title}
+      leftSection={<IconFolder size={16} color={project.color} />}
+      active={active}
+      onClick={() => onNavigate()}
+      variant="light"
+      rightSection={
+        <Box
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => { if (!menuOpened) setHovered(false); }}
+          style={{ display: 'flex', alignItems: 'center', minWidth: 24, justifyContent: 'center' }}
+        >
+          {hovered || menuOpened ? (
+            <Menu
+              opened={menuOpened}
+              onChange={(opened) => {
+                setMenuOpened(opened);
+                if (!opened) setHovered(false);
+              }}
+              shadow="md"
+              width={180}
+              position="bottom-end"
+            >
+              <Menu.Target>
+                <ActionIcon
+                  size="xs"
+                  variant="subtle"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <IconDots size={14} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconEdit size={14} />}
+                  onClick={(e) => { e.stopPropagation(); handleRename(); }}
+                >
+                  Переименовать
+                </Menu.Item>
+                <Menu.Item
+                  color="red"
+                  leftSection={<IconTrash size={14} />}
+                  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                >
+                  Удалить
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          ) : (
+            taskCount > 0 && <Text size="xs" c="dimmed">{taskCount}</Text>
+          )}
+        </Box>
+      }
+    />
+  );
+}
 
 const NAV_ITEMS = [
   { label: 'Входящие', icon: IconInbox, path: '/inbox' },
@@ -45,7 +132,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { projects, fetchProjects } = useTaskStore();
+  const { projects, projectTaskCounts, fetchProjects, fetchProjectTaskCounts } = useTaskStore();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [opened, setOpened] = useState(true);
   const [projectsOpen, setProjectsOpen] = useState(true);
@@ -53,6 +140,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchProjects();
+    fetchProjectTaskCounts();
   }, []);
 
   return (
@@ -140,13 +228,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
               <Collapse in={projectsOpen}>
                 {projects.map((p: Project) => (
-                  <NavLink
+                  <ProjectNavItem
                     key={p.id}
-                    label={p.title}
-                    leftSection={<IconFolder size={16} color={p.color} />}
+                    project={p}
                     active={location.pathname === `/project/${p.id}`}
-                    onClick={() => navigate(`/project/${p.id}`)}
-                    variant="light"
+                    taskCount={projectTaskCounts[p.id] || 0}
+                    onNavigate={() => navigate(`/project/${p.id}`)}
                   />
                 ))}
                 {projects.length === 0 && (
@@ -174,7 +261,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </AppShell.Main>
       </AppShell>
 
-      <QuickAddModal opened={quickAdd} onClose={() => setQuickAdd(false)} />
+      <QuickAddModal
+        opened={quickAdd}
+        onClose={() => setQuickAdd(false)}
+        defaultDueDate={location.pathname === '/today' ? new Date() : undefined}
+        defaultProjectId={location.pathname.match(/^\/project\/(.+)$/)?.[1] || undefined}
+      />
     </>
   );
 }

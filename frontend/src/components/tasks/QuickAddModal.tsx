@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Group, Button } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useTaskStore } from '@/stores/taskStore';
@@ -6,14 +6,23 @@ import { useTaskStore } from '@/stores/taskStore';
 interface Props {
   opened: boolean;
   onClose: () => void;
+  defaultDueDate?: Date;
+  defaultProjectId?: string;
 }
 
-export function QuickAddModal({ opened, onClose }: Props) {
-  const { addTask, projects } = useTaskStore();
+export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectId }: Props) {
+  const { addTask, projects, fetchProjectTaskCounts } = useTaskStore();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('0');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (opened) {
+      setDueDate(defaultDueDate || null);
+      setProjectId(defaultProjectId || null);
+    }
+  }, [opened, defaultDueDate, defaultProjectId]);
 
   const handleAdd = async () => {
     if (!title.trim()) return;
@@ -23,6 +32,7 @@ export function QuickAddModal({ opened, onClose }: Props) {
       due_date: dueDate?.toISOString() || null,
       project_id: projectId,
     });
+    fetchProjectTaskCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);

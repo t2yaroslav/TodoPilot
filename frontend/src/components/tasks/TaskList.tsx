@@ -9,10 +9,11 @@ import { TaskEditModal } from './TaskEditModal';
 interface Props {
   filterParams?: Record<string, unknown>;
   showAddButton?: boolean;
+  defaultDueDate?: Date;
 }
 
-export function TaskList({ filterParams, showAddButton = true }: Props) {
-  const { tasks, loading, fetchTasks, addTask, projects } = useTaskStore();
+export function TaskList({ filterParams, showAddButton = true, defaultDueDate }: Props) {
+  const { tasks, loading, fetchTasks, addTask, projects, fetchProjectTaskCounts } = useTaskStore();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('0');
@@ -24,6 +25,12 @@ export function TaskList({ filterParams, showAddButton = true }: Props) {
     fetchTasks(filterParams);
   }, [JSON.stringify(filterParams)]);
 
+  const handleStartAdding = () => {
+    setDueDate(defaultDueDate || null);
+    setProjectId(filterParams?.project_id as string || null);
+    setAdding(true);
+  };
+
   const handleAdd = async () => {
     if (!title.trim()) return;
     await addTask({
@@ -32,6 +39,7 @@ export function TaskList({ filterParams, showAddButton = true }: Props) {
       due_date: dueDate?.toISOString() || null,
       project_id: projectId || filterParams?.project_id || null,
     });
+    fetchProjectTaskCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);
@@ -55,7 +63,7 @@ export function TaskList({ filterParams, showAddButton = true }: Props) {
           py={6}
           px="sm"
           style={{ cursor: 'pointer', opacity: 0.6 }}
-          onClick={() => setAdding(true)}
+          onClick={handleStartAdding}
         >
           <IconPlus size={16} />
           <Text size="sm">Добавить задачу</Text>

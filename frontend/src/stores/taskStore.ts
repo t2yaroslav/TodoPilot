@@ -39,6 +39,7 @@ interface TaskStore {
   tasks: Task[];
   projects: Project[];
   goals: Goal[];
+  projectTaskCounts: Record<string, number>;
   loading: boolean;
 
   fetchTasks: (params?: Record<string, unknown>) => Promise<void>;
@@ -48,6 +49,7 @@ interface TaskStore {
   toggleTask: (id: string, completed: boolean) => Promise<void>;
 
   fetchProjects: () => Promise<void>;
+  fetchProjectTaskCounts: () => Promise<void>;
   addProject: (data: Record<string, unknown>) => Promise<Project>;
   editProject: (id: string, data: Record<string, unknown>) => Promise<void>;
   removeProject: (id: string) => Promise<void>;
@@ -62,6 +64,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   projects: [],
   goals: [],
+  projectTaskCounts: {},
   loading: false,
 
   fetchTasks: async (params) => {
@@ -94,6 +97,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   fetchProjects: async () => {
     const { data } = await api.getProjects();
     set({ projects: data });
+  },
+
+  fetchProjectTaskCounts: async () => {
+    const { data } = await api.getProjectTaskCounts();
+    set({ projectTaskCounts: data });
   },
 
   addProject: async (projData) => {
