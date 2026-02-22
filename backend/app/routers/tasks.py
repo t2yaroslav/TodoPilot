@@ -13,6 +13,32 @@ from .auth import get_current_user
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
+@router.get("/counts")
+async def task_counts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start.replace(hour=23, minute=59, second=59)
+
+    base = select(func.count(Task.id)).where(
+        Task.user_id == user.id,
+        Task.completed == False,  # noqa: E712
+        Task.parent_task_id == None,  # noqa: E711
+    )
+
+    today_q = base.where(and_(Task.due_date >= today_start, Task.due_date <= today_end))
+    inbox_q = base.where(Task.project_id == None, Task.goal_id == None)  # noqa: E711
+    completed_q = select(func.count(Task.id)).where(
+        Task.user_id == user.id,
+        Task.completed == True,  # noqa: E712
+        Task.parent_task_id == None,  # noqa: E711
+    )
+
+    today_count = (await db.execute(today_q)).scalar() or 0
+    inbox_count = (await db.execute(inbox_q)).scalar() or 0
+    completed_count = (await db.execute(completed_q)).scalar() or 0
+
+    return {"today": today_count, "inbox": inbox_count, "completed": completed_count}
+
+
 @router.get("", response_model=list[TaskOut])
 async def list_tasks(
     project_id: UUID | None = None,

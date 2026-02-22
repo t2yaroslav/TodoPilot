@@ -35,11 +35,49 @@ export interface Goal {
   created_at: string;
 }
 
+export interface NavCounts {
+  today: number;
+  inbox: number;
+  completed: number;
+}
+
+// Smart color: pick maximally distant hue from existing project colors
+function pickNextProjectColor(existingColors: string[]): string {
+  const BASE_HUES = [210, 340, 140, 35, 270, 180, 10, 85, 310, 55, 240, 160];
+  const usedHues = existingColors.map((c) => {
+    const m = c.match(/^hsl\((\d+)/);
+    return m ? parseInt(m[1]) : -1;
+  }).filter((h) => h >= 0);
+
+  // Use predefined palette first
+  for (const hue of BASE_HUES) {
+    if (!usedHues.some((h) => Math.abs(h - hue) < 15)) {
+      return `hsl(${hue}, 65%, 50%)`;
+    }
+  }
+
+  // Fallback: find the largest gap between existing hues
+  if (usedHues.length === 0) return `hsl(${BASE_HUES[0]}, 65%, 50%)`;
+  const sorted = [...usedHues].sort((a, b) => a - b);
+  let bestHue = 0;
+  let bestGap = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    const next = i + 1 < sorted.length ? sorted[i + 1] : sorted[0] + 360;
+    const gap = next - sorted[i];
+    if (gap > bestGap) {
+      bestGap = gap;
+      bestHue = (sorted[i] + gap / 2) % 360;
+    }
+  }
+  return `hsl(${Math.round(bestHue)}, 65%, 50%)`;
+}
+
 interface TaskStore {
   tasks: Task[];
   projects: Project[];
   goals: Goal[];
   projectTaskCounts: Record<string, number>;
+  navCounts: NavCounts;
   loading: boolean;
 
   fetchTasks: (params?: Record<string, unknown>) => Promise<void>;
@@ -50,6 +88,8 @@ interface TaskStore {
 
   fetchProjects: () => Promise<void>;
   fetchProjectTaskCounts: () => Promise<void>;
+  fetchNavCounts: () => Promise<void>;
+  refreshAllCounts: () => Promise<void>;
   addProject: (data: Record<string, unknown>) => Promise<Project>;
   editProject: (id: string, data: Record<string, unknown>) => Promise<void>;
   removeProject: (id: string) => Promise<void>;
@@ -65,6 +105,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   projects: [],
   goals: [],
   projectTaskCounts: {},
+  navCounts: { today: 0, inbox: 0, completed: 0 },
   loading: false,
 
   fetchTasks: async (params) => {
@@ -104,7 +145,25 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ projectTaskCounts: data });
   },
 
+  fetchNavCounts: async () => {
+    const { data } = await api.getTaskCounts();
+    set({ navCounts: data });
+  },
+
+  refreshAllCounts: async () => {
+    const [projCounts, navCounts] = await Promise.all([
+      api.getProjectTaskCounts(),
+      api.getTaskCounts(),
+    ]);
+    set({ projectTaskCounts: projCounts.data, navCounts: navCounts.data });
+  },
+
   addProject: async (projData) => {
+    // Auto-assign color if not provided
+    if (!projData.color) {
+      const existingColors = get().projects.map((p) => p.color);
+      projData = { ...projData, color: pickNextProjectColor(existingColors) };
+    }
     const { data } = await api.createProject(projData);
     set({ projects: [...get().projects, data] });
     return data;

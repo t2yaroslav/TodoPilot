@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function TaskEditModal({ task, onClose, filterParams }: Props) {
-  const { editTask, fetchTasks, projects, goals } = useTaskStore();
+  const { editTask, fetchTasks, refreshAllCounts, projects, goals } = useTaskStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('0');
@@ -40,6 +40,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
       goal_id: goalId,
     });
     fetchTasks(filterParams);
+    refreshAllCounts();
     onClose();
   };
 

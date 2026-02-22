@@ -29,6 +29,7 @@ export const updateMe = (data: Record<string, unknown>) => api.patch('/auth/me',
 
 // Tasks
 export const getTasks = (params?: Record<string, unknown>) => api.get('/tasks', { params });
+export const getTaskCounts = () => api.get('/tasks/counts');
 export const createTask = (data: Record<string, unknown>) => api.post('/tasks', data);
 export const updateTask = (id: string, data: Record<string, unknown>) => api.patch(`/tasks/${id}`, data);
 export const deleteTask = (id: string) => api.delete(`/tasks/${id}`);

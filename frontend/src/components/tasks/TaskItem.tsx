@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { ActionIcon, Checkbox, Group, Text, Badge, Box } from '@mantine/core';
-import { IconTrash, IconEdit } from '@tabler/icons-react';
+import { IconTrash, IconEdit, IconCalendar, IconHash } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import dayjs from 'dayjs';
 
@@ -17,57 +18,97 @@ interface Props {
 }
 
 export function TaskItem({ task, onEdit }: Props) {
-  const { toggleTask, removeTask, fetchProjectTaskCounts } = useTaskStore();
+  const { toggleTask, removeTask, refreshAllCounts } = useTaskStore();
   const { projects } = useTaskStore();
   const project = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <Group
-      gap="sm"
-      py={6}
+    <Box
+      py={8}
       px="sm"
-      wrap="nowrap"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => onEdit?.(task)}
       style={{
         borderBottom: '1px solid var(--mantine-color-default-border)',
         cursor: 'pointer',
-        '&:hover': { backgroundColor: 'var(--mantine-color-gray-0)' },
+        position: 'relative',
       }}
     >
-      <Checkbox
-        checked={task.completed}
-        onChange={(e) => { toggleTask(task.id, e.currentTarget.checked).then(fetchProjectTaskCounts); }}
-        color={PRIORITY_COLORS[task.priority] || 'gray'}
-        radius="xl"
-        size="sm"
-      />
-      <Box style={{ flex: 1, minWidth: 0 }}>
-        <Text
+      <Group gap="sm" wrap="nowrap" align="flex-start">
+        <Checkbox
+          checked={task.completed}
+          onChange={(e) => {
+            e.stopPropagation();
+            toggleTask(task.id, e.currentTarget.checked).then(refreshAllCounts);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          color={PRIORITY_COLORS[task.priority] || 'gray'}
+          radius="xl"
           size="sm"
-          td={task.completed ? 'line-through' : undefined}
-          c={task.completed ? 'dimmed' : undefined}
-          lineClamp={1}
-        >
-          {task.title}
-        </Text>
-      </Box>
-      <Group gap={4} wrap="nowrap">
-        {task.due_date && (
-          <Badge size="xs" variant="light" color={dayjs(task.due_date).isBefore(dayjs(), 'day') ? 'red' : 'blue'}>
-            {dayjs(task.due_date).format('DD MMM')}
-          </Badge>
+          mt={2}
+        />
+        <Box style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            size="sm"
+            td={task.completed ? 'line-through' : undefined}
+            c={task.completed ? 'dimmed' : undefined}
+            lineClamp={1}
+          >
+            {task.title}
+          </Text>
+          {task.description && (
+            <Text size="xs" c="dimmed" lineClamp={1} mt={2}>
+              {task.description}
+            </Text>
+          )}
+          {(task.due_date || project) && (
+            <Group gap="xs" mt={4}>
+              {task.due_date && (
+                <Badge
+                  size="xs"
+                  variant="light"
+                  color={dayjs(task.due_date).isBefore(dayjs(), 'day') ? 'red' : 'blue'}
+                  leftSection={<IconCalendar size={10} />}
+                >
+                  {dayjs(task.due_date).format('D MMM')}
+                </Badge>
+              )}
+              <Box style={{ flex: 1 }} />
+              {project && (
+                <Badge
+                  size="xs"
+                  variant="light"
+                  color="gray"
+                  leftSection={<IconHash size={10} color={project.color} />}
+                >
+                  {project.title}
+                </Badge>
+              )}
+            </Group>
+          )}
+        </Box>
+        {hovered && (
+          <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
+            <ActionIcon
+              variant="subtle"
+              size="xs"
+              onClick={(e) => { e.stopPropagation(); onEdit?.(task); }}
+            >
+              <IconEdit size={14} />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              size="xs"
+              color="red"
+              onClick={(e) => { e.stopPropagation(); removeTask(task.id).then(refreshAllCounts); }}
+            >
+              <IconTrash size={14} />
+            </ActionIcon>
+          </Group>
         )}
-        {project && (
-          <Badge size="xs" variant="dot" color={project.color}>
-            {project.title}
-          </Badge>
-        )}
-        <ActionIcon variant="subtle" size="xs" onClick={() => onEdit?.(task)}>
-          <IconEdit size={14} />
-        </ActionIcon>
-        <ActionIcon variant="subtle" size="xs" color="red" onClick={() => removeTask(task.id).then(fetchProjectTaskCounts)}>
-          <IconTrash size={14} />
-        </ActionIcon>
       </Group>
-    </Group>
+    </Box>
   );
 }

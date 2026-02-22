@@ -13,8 +13,10 @@ import {
   ScrollArea,
   Collapse,
   Box,
+  Burger,
   useMantineColorScheme,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import {
   IconInbox,
   IconCalendarEvent,
@@ -23,7 +25,6 @@ import {
   IconPlus,
   IconSettings,
   IconLogout,
-  IconMenu2,
   IconChevronDown,
   IconChevronRight,
   IconFolder,
@@ -45,7 +46,7 @@ function ProjectNavItem({ project, active, taskCount, onNavigate }: {
 }) {
   const [hovered, setHovered] = useState(false);
   const [menuOpened, setMenuOpened] = useState(false);
-  const { editProject, removeProject, fetchProjectTaskCounts } = useTaskStore();
+  const { editProject, removeProject, refreshAllCounts } = useTaskStore();
   const navigate = useNavigate();
 
   const handleRename = () => {
@@ -57,8 +58,7 @@ function ProjectNavItem({ project, active, taskCount, onNavigate }: {
 
   const handleDelete = () => {
     if (confirm(`Удалить проект «${project.title}»? Задачи проекта останутся без проекта.`)) {
-      removeProject(project.id);
-      fetchProjectTaskCounts();
+      removeProject(project.id).then(refreshAllCounts);
       if (active) navigate('/inbox');
     }
   };
@@ -122,31 +122,43 @@ function ProjectNavItem({ project, active, taskCount, onNavigate }: {
 }
 
 const NAV_ITEMS = [
-  { label: 'Входящие', icon: IconInbox, path: '/inbox' },
-  { label: 'Сегодня', icon: IconCalendarEvent, path: '/today' },
-  { label: 'Предстоящие', icon: IconCalendarDue, path: '/upcoming' },
-  { label: 'Выполнено', icon: IconCircleCheck, path: '/completed' },
+  { label: 'Входящие', icon: IconInbox, path: '/inbox', countKey: 'inbox' as const },
+  { label: 'Сегодня', icon: IconCalendarEvent, path: '/today', countKey: 'today' as const },
+  { label: 'Предстоящие', icon: IconCalendarDue, path: '/upcoming', countKey: null },
+  { label: 'Выполнено', icon: IconCircleCheck, path: '/completed', countKey: 'completed' as const },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { projects, projectTaskCounts, fetchProjects, fetchProjectTaskCounts } = useTaskStore();
+  const { projects, projectTaskCounts, navCounts, fetchProjects, refreshAllCounts } = useTaskStore();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const [opened, setOpened] = useState(true);
   const [projectsOpen, setProjectsOpen] = useState(true);
   const [quickAdd, setQuickAdd] = useState(false);
 
   useEffect(() => {
     fetchProjects();
-    fetchProjectTaskCounts();
+    refreshAllCounts();
   }, []);
+
+  // Auto-close sidebar on mobile
+  useEffect(() => {
+    if (isMobile) setOpened(false);
+  }, [isMobile]);
+
+  // Close sidebar on navigation on mobile
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    if (isMobile) setOpened(false);
+  };
 
   return (
     <>
       <AppShell
-        navbar={{ width: opened ? 280 : 0, breakpoint: 'sm' }}
+        navbar={{ width: opened ? 280 : 0, breakpoint: 0 }}
         padding="md"
         styles={{
           main: { backgroundColor: colorScheme === 'dark' ? 'var(--mantine-color-dark-8)' : 'var(--mantine-color-gray-0)' },
@@ -170,7 +182,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </UnstyledButton>
                   </Menu.Target>
                   <Menu.Dropdown>
-                    <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => navigate('/settings')}>
+                    <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => handleNavigate('/settings')}>
                       Настройки
                     </Menu.Item>
                     <Menu.Item
@@ -192,16 +204,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </AppShell.Section>
 
             <AppShell.Section grow component={ScrollArea}>
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.path}
-                  label={item.label}
-                  leftSection={<item.icon size={18} />}
-                  active={location.pathname === item.path}
-                  onClick={() => navigate(item.path)}
-                  variant="light"
-                />
-              ))}
+              {NAV_ITEMS.map((item) => {
+                const count = item.countKey ? navCounts[item.countKey] : 0;
+                return (
+                  <NavLink
+                    key={item.path}
+                    label={item.label}
+                    leftSection={<item.icon size={18} />}
+                    active={location.pathname === item.path}
+                    onClick={() => handleNavigate(item.path)}
+                    variant="light"
+                    rightSection={count > 0 ? <Text size="xs" c="dimmed">{count}</Text> : undefined}
+                  />
+                );
+              })}
 
               <Divider my="sm" />
 
@@ -233,7 +249,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     project={p}
                     active={location.pathname === `/project/${p.id}`}
                     taskCount={projectTaskCounts[p.id] || 0}
-                    onNavigate={() => navigate(`/project/${p.id}`)}
+                    onNavigate={() => handleNavigate(`/project/${p.id}`)}
                   />
                 ))}
                 {projects.length === 0 && (
@@ -248,15 +264,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <AppShell.Main>
           <Box pos="relative">
-            <ActionIcon
-              variant="subtle"
+            <Burger
+              opened={opened}
               onClick={() => setOpened(!opened)}
+              size="sm"
               style={{ position: 'absolute', top: 0, left: 0, zIndex: 10 }}
               title="Свернуть/развернуть сайдбар"
-            >
-              <IconMenu2 size={18} />
-            </ActionIcon>
-            <Box pl={40}>{children}</Box>
+            />
+            <Box pl={40} maw={800} mx="auto">{children}</Box>
           </Box>
         </AppShell.Main>
       </AppShell>

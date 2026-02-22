@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectId }: Props) {
-  const { addTask, projects, fetchProjectTaskCounts } = useTaskStore();
+  const { addTask, projects, refreshAllCounts } = useTaskStore();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('0');
   const [dueDate, setDueDate] = useState<Date | null>(null);
@@ -32,7 +32,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
       due_date: dueDate?.toISOString() || null,
       project_id: projectId,
     });
-    fetchProjectTaskCounts();
+    refreshAllCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);

@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function TaskList({ filterParams, showAddButton = true, defaultDueDate }: Props) {
-  const { tasks, loading, fetchTasks, addTask, projects, fetchProjectTaskCounts } = useTaskStore();
+  const { tasks, loading, fetchTasks, addTask, projects, refreshAllCounts } = useTaskStore();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('0');
@@ -39,7 +39,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
       due_date: dueDate?.toISOString() || null,
       project_id: projectId || filterParams?.project_id || null,
     });
-    fetchProjectTaskCounts();
+    refreshAllCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);
