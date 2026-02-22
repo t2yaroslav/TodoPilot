@@ -31,8 +31,6 @@ services:
     build: ./frontend
     depends_on:
       - backend
-    ports:
-      - "3000:80"
 
   nginx:
     image: nginx:alpine
