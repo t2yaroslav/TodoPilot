@@ -48,7 +48,7 @@ async def send_code(body: AuthRequest, db: AsyncSession = Depends(get_db)):
         msg = EmailMessage()
         msg["From"] = settings.smtp_from
         msg["To"] = body.email
-        msg["Subject"] = "TodoPulse — код входа"
+        msg["Subject"] = "TodoPilot — код входа"
         msg.set_content(f"Ваш код входа: {code}\n\nКод действителен 10 минут.")
         try:
             await aiosmtplib.send(
