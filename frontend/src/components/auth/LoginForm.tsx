@@ -45,7 +45,7 @@ export function LoginForm() {
   return (
     <Paper p="xl" radius="md" withBorder w={400}>
       <Stack>
-        <Title order={2} ta="center">TodoPulse</Title>
+        <Title order={2} ta="center">TodoPilot</Title>
         <Text size="sm" c="dimmed" ta="center">
           {step === 'email' ? 'Войдите по email' : 'Введите код из письма'}
         </Text>

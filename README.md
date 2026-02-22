@@ -1,4 +1,4 @@
-# TodoPulse
+# TodoPilot
 
 AI-powered task manager with productivity analytics. Combines Todoist-like minimalism with an AI assistant that connects daily tasks to long-term goals.
 
@@ -17,25 +17,37 @@ AI-powered task manager with productivity analytics. Combines Todoist-like minim
 cp .env.example .env
 # Edit .env with your settings (SMTP, LLM API key)
 
-# 2. Run with Docker
+# 2. Run with Docker (all services)
 docker compose up -d
 
 # 3. Open http://localhost
 ```
 
-## Development
+## Local Development
+
+**Option A — Only Postgres in Docker, backend + frontend on host:**
 
 ```bash
-# Start DB + backend + frontend with hot reload
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Start only Postgres
+docker compose up postgres -d
 
-# Or run separately:
+# .env has DATABASE_URL with localhost — works as-is
 # Backend
 cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload
 
-# Frontend
+# Frontend (in another terminal)
 cd frontend && npm install && npm run dev
 ```
+
+**Option B — Everything in Docker with hot reload:**
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# DATABASE_URL is overridden in docker-compose to use "postgres" hostname
+```
+
+> **Note:** `DATABASE_URL` in `.env` uses `localhost` (for host-machine access).
+> Docker Compose overrides it to `postgres` (Docker service name) automatically.
 
 ## AI Provider Switching
 

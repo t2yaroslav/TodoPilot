@@ -13,7 +13,7 @@ from ..config import settings
 
 litellm.drop_params = True
 
-SYSTEM_PROMPT = """Ты — AI-помощник в приложении TodoPulse для управления задачами.
+SYSTEM_PROMPT = """Ты — AI-помощник в приложении TodoPilot для управления задачами.
 Твоя роль: помогать пользователю с продуктивностью, мотивацией и целеполаганием.
 
 Принципы:
@@ -106,7 +106,7 @@ async def weekly_retrospective(
 async def onboarding_chat(message: str, history: list[dict]) -> str:
     messages = history + [{"role": "user", "content": message}]
     system_override = (
-        "Ты помогаешь новому пользователю настроить приложение TodoPulse. "
+        "Ты помогаешь новому пользователю настроить приложение TodoPilot. "
         "Задавай вопросы о его сфере деятельности, текущих задачах и целях. "
         "Когда соберёшь достаточно информации, предложи список задач и целей. "
         "Будь дружелюбным и кратким. Отвечай на языке пользователя."

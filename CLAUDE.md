@@ -1,9 +1,9 @@
-# TodoPulse - AI-powered Task Manager
+# TodoPilot - AI-powered Task Manager
 
 ## Architecture
 - **Frontend**: React 18 + Vite + TypeScript + Mantine UI v7 + Zustand + React Router v6 + Recharts
 - **Backend**: Python FastAPI + SQLAlchemy (async) + Alembic + LiteLLM
-- **DB**: PostgreSQL 16
+- **DB**: PostgreSQL 18
 - **Auth**: Passwordless email (JWT tokens)
 - **Deploy**: Docker Compose (nginx + frontend + backend + postgres)
 
