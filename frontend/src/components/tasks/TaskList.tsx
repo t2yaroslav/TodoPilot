@@ -102,6 +102,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
               onChange={setDueDate}
               clearable
               w={130}
+              valueFormat="D MMM YYYY"
             />
             {projects.length > 0 && (
               <Select

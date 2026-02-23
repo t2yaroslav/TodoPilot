@@ -15,6 +15,14 @@ const PRIORITY_COLORS: Record<number, string> = {
   0: 'gray',   // none
 };
 
+const PRIORITY_HEX: Record<number, string> = {
+  4: 'var(--mantine-color-red-5)',
+  3: 'var(--mantine-color-orange-5)',
+  2: 'var(--mantine-color-blue-5)',
+  1: 'var(--mantine-color-gray-5)',
+  0: 'var(--mantine-color-gray-4)',
+};
+
 function formatRelativeDate(dateStr: string): string {
   const date = dayjs(dateStr);
   const today = dayjs().startOf('day');
@@ -24,7 +32,18 @@ function formatRelativeDate(dateStr: string): string {
   if (diff === 1) return 'Завтра';
   if (diff === -1) return 'Вчера';
   if (diff > 1 && diff <= 6) return date.format('dddd');
-  return date.format('D MMM');
+  return date.format('D.MM.YYYY');
+}
+
+function getDateColor(dateStr: string): string {
+  const date = dayjs(dateStr);
+  const today = dayjs().startOf('day');
+  const diff = date.startOf('day').diff(today, 'day');
+
+  if (diff < 0) return 'var(--mantine-color-red-6)';
+  if (diff === 0) return 'var(--mantine-color-green-6)';
+  if (diff === 1) return 'var(--mantine-color-yellow-7)';
+  return 'var(--mantine-color-violet-5)';
 }
 
 interface Props {
@@ -38,7 +57,7 @@ export function TaskItem({ task, onEdit }: Props) {
   const project = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
   const [hovered, setHovered] = useState(false);
 
-  const isOverdue = task.due_date && dayjs(task.due_date).isBefore(dayjs(), 'day');
+  const dateColor = task.due_date ? getDateColor(task.due_date) : undefined;
 
   return (
     <Box
@@ -65,6 +84,9 @@ export function TaskItem({ task, onEdit }: Props) {
           radius="xl"
           size="sm"
           mt={2}
+          styles={!task.completed ? {
+            input: { borderColor: PRIORITY_HEX[task.priority] || PRIORITY_HEX[0] },
+          } : undefined}
         />
         <Box style={{ flex: 1, minWidth: 0 }}>
           <Text
@@ -84,8 +106,8 @@ export function TaskItem({ task, onEdit }: Props) {
             <Group gap="xs" mt={4}>
               {task.due_date && (
                 <Group gap={4} wrap="nowrap">
-                  <IconCalendar size={12} color={isOverdue ? 'var(--mantine-color-red-6)' : 'var(--mantine-color-dimmed)'} />
-                  <Text size="xs" c={isOverdue ? 'red' : 'dimmed'}>
+                  <IconCalendar size={12} color={dateColor} />
+                  <Text size="xs" style={{ color: dateColor }}>
                     {formatRelativeDate(task.due_date)}
                   </Text>
                 </Group>

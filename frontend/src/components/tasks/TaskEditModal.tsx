@@ -63,7 +63,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
               { value: '4', label: '🔴 Важно и срочно' },
             ]}
           />
-          <DatePickerInput label="Срок" value={dueDate} onChange={setDueDate} clearable />
+          <DatePickerInput label="Срок" value={dueDate} onChange={setDueDate} clearable valueFormat="D MMM YYYY" />
         </Group>
         <Group grow>
           {projects.length > 0 && (

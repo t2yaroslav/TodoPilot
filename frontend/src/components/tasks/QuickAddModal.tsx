@@ -65,7 +65,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
           ]}
           w={180}
         />
-        <DatePickerInput size="sm" placeholder="Дата" value={dueDate} onChange={setDueDate} clearable w={150} />
+        <DatePickerInput size="sm" placeholder="Дата" value={dueDate} onChange={setDueDate} clearable w={150} valueFormat="D MMM YYYY" />
         {projects.length > 0 && (
           <Select
             size="sm"
