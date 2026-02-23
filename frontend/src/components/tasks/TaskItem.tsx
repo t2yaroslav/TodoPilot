@@ -104,26 +104,37 @@ export function TaskItem({ task, onEdit }: Props) {
             </Group>
           )}
         </Box>
-        {hovered && (
-          <Group gap={2} wrap="nowrap" style={{ flexShrink: 0 }}>
-            <ActionIcon
-              variant="subtle"
-              size="xs"
-              onClick={(e) => { e.stopPropagation(); onEdit?.(task); }}
-            >
-              <IconEdit size={14} />
-            </ActionIcon>
-            <ActionIcon
-              variant="subtle"
-              size="xs"
-              color="red"
-              onClick={(e) => { e.stopPropagation(); removeTask(task.id).then(refreshAllCounts); }}
-            >
-              <IconTrash size={14} />
-            </ActionIcon>
-          </Group>
-        )}
       </Group>
+      {hovered && (
+        <Group
+          gap={2}
+          wrap="nowrap"
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 12,
+            background: 'var(--mantine-color-body)',
+            borderRadius: 4,
+            padding: '2px 4px',
+          }}
+        >
+          <ActionIcon
+            variant="subtle"
+            size="xs"
+            onClick={(e) => { e.stopPropagation(); onEdit?.(task); }}
+          >
+            <IconEdit size={14} />
+          </ActionIcon>
+          <ActionIcon
+            variant="subtle"
+            size="xs"
+            color="red"
+            onClick={(e) => { e.stopPropagation(); removeTask(task.id).then(refreshAllCounts); }}
+          >
+            <IconTrash size={14} />
+          </ActionIcon>
+        </Group>
+      )}
     </Box>
   );
 }
