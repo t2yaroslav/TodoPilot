@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { notifications } from '@mantine/notifications';
 
 const api = axios.create({ baseURL: '/api' });
 
@@ -14,7 +15,24 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
+      return Promise.reject(err);
     }
+
+    const data = err.response?.data;
+    const status = err.response?.status || 'Network Error';
+    const message = data?.error || err.message || 'Неизвестная ошибка';
+    const detail = data?.traceback
+      ? data.traceback.join('')
+      : data?.detail || '';
+
+    notifications.show({
+      title: `Ошибка ${status}${data?.type ? ` (${data.type})` : ''}`,
+      message: detail ? `${message}\n\n${detail}` : message,
+      color: 'red',
+      autoClose: detail ? 15000 : 5000,
+      styles: detail ? { description: { whiteSpace: 'pre-wrap', fontSize: '11px', maxHeight: '300px', overflow: 'auto' } } : undefined,
+    });
+
     return Promise.reject(err);
   }
 );

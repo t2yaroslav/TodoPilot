@@ -41,7 +41,7 @@ class Goal(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    color: Mapped[str] = mapped_column(String(7), default="#6366f1")
+    color: Mapped[str] = mapped_column(String(25), default="#6366f1")
     goal_type: Mapped[str] = mapped_column(String(20), default="quarterly")  # quarterly, yearly
     parent_goal_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("goals.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -57,7 +57,7 @@ class Project(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    color: Mapped[str] = mapped_column(String(7), default="#8b5cf6")
+    color: Mapped[str] = mapped_column(String(25), default="#8b5cf6")
     goal_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("goals.id", ondelete="SET NULL"))
     position: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

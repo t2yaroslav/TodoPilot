@@ -1,12 +1,17 @@
+import os
+import traceback
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from .database import engine
 from .models import Base
 from .routers import ai, auth, goals, projects, stats, tasks
+
+DEV_MODE = os.getenv("FASTAPI_ENV", "development") != "production"
 
 
 @asynccontextmanager
@@ -15,6 +20,9 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))  # verify connection
         await conn.run_sync(Base.metadata.create_all)
+        # Auto-migrate: widen color columns for existing databases
+        await conn.execute(text("ALTER TABLE projects ALTER COLUMN color TYPE VARCHAR(25)"))
+        await conn.execute(text("ALTER TABLE goals ALTER COLUMN color TYPE VARCHAR(25)"))
     yield
 
 
@@ -27,6 +35,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    detail = {"error": str(exc)}
+    if DEV_MODE:
+        detail["traceback"] = traceback.format_exception(exc)
+        detail["type"] = type(exc).__name__
+    return JSONResponse(status_code=500, content=detail)
+
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
