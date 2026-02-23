@@ -57,10 +57,10 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
           onChange={(v) => setPriority(v || '0')}
           data={[
             { value: '0', label: 'Без приоритета' },
-            { value: '1', label: 'P4' },
-            { value: '2', label: 'P3 Важно' },
-            { value: '3', label: 'P2 Срочно' },
-            { value: '4', label: 'P1 Срочно и Важно' },
+            { value: '1', label: '⚪ P4' },
+            { value: '2', label: '🔵 Важно' },
+            { value: '3', label: '🟠 Срочно' },
+            { value: '4', label: '🔴 Срочно и Важно' },
           ]}
           w={180}
         />

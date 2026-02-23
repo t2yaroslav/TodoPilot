@@ -61,7 +61,7 @@ async def list_tasks(
         today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start.replace(hour=23, minute=59, second=59)
         q = q.where(and_(Task.due_date >= today_start, Task.due_date <= today_end))
-    if inbox:
+    elif inbox:
         q = q.where(Task.project_id == None, Task.goal_id == None)  # noqa: E711
     if parent_task_id:
         q = q.where(Task.parent_task_id == parent_task_id)
