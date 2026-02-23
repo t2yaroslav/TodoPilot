@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActionIcon, Checkbox, Group, Text, Badge, Box } from '@mantine/core';
+import { ActionIcon, Checkbox, Group, Text, Box } from '@mantine/core';
 import { IconTrash, IconEdit, IconCalendar, IconHash } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import dayjs from 'dayjs';
@@ -92,14 +92,10 @@ export function TaskItem({ task, onEdit }: Props) {
               )}
               <Box style={{ flex: 1 }} />
               {project && (
-                <Badge
-                  size="xs"
-                  variant="light"
-                  color="gray"
-                  leftSection={<IconHash size={10} color={project.color} />}
-                >
-                  {project.title}
-                </Badge>
+                <Group gap={4} wrap="nowrap">
+                  <Text size="xs" c="dimmed">{project.title}</Text>
+                  <IconHash size={10} color={project.color} />
+                </Group>
               )}
             </Group>
           )}
