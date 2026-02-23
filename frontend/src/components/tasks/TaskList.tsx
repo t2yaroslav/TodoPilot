@@ -87,10 +87,10 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
               onChange={(v) => setPriority(v || '0')}
               data={[
                 { value: '0', label: 'Без приоритета' },
-                { value: '1', label: '⚪ P4' },
-                { value: '2', label: '🔵 Важно' },
-                { value: '3', label: '🟠 Срочно' },
-                { value: '4', label: '🔴 Срочно и Важно' },
+                { value: '1', label: '⚪ Не важно, не срочно' },
+                { value: '2', label: '🔵 Важно, не срочно' },
+                { value: '3', label: '🟠 Не важно и срочно' },
+                { value: '4', label: '🔴 Важно и срочно' },
               ]}
               w={160}
             />
