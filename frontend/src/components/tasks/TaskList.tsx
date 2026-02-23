@@ -5,14 +5,16 @@ import { IconPlus } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
+import { toNoonUTC } from '@/lib/dates';
 
 interface Props {
   filterParams?: Record<string, unknown>;
   showAddButton?: boolean;
+  defaultDueDate?: Date;
 }
 
-export function TaskList({ filterParams, showAddButton = true }: Props) {
-  const { tasks, loading, fetchTasks, addTask, projects } = useTaskStore();
+export function TaskList({ filterParams, showAddButton = true, defaultDueDate }: Props) {
+  const { tasks, loading, fetchTasks, addTask, projects, refreshAllCounts } = useTaskStore();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('0');
@@ -24,14 +26,21 @@ export function TaskList({ filterParams, showAddButton = true }: Props) {
     fetchTasks(filterParams);
   }, [JSON.stringify(filterParams)]);
 
+  const handleStartAdding = () => {
+    setDueDate(defaultDueDate || null);
+    setProjectId(filterParams?.project_id as string || null);
+    setAdding(true);
+  };
+
   const handleAdd = async () => {
     if (!title.trim()) return;
     await addTask({
       title: title.trim(),
       priority: parseInt(priority),
-      due_date: dueDate?.toISOString() || null,
+      due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId || filterParams?.project_id || null,
     });
+    refreshAllCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);
@@ -55,7 +64,7 @@ export function TaskList({ filterParams, showAddButton = true }: Props) {
           py={6}
           px="sm"
           style={{ cursor: 'pointer', opacity: 0.6 }}
-          onClick={() => setAdding(true)}
+          onClick={handleStartAdding}
         >
           <IconPlus size={16} />
           <Text size="sm">Добавить задачу</Text>
@@ -79,10 +88,10 @@ export function TaskList({ filterParams, showAddButton = true }: Props) {
               onChange={(v) => setPriority(v || '0')}
               data={[
                 { value: '0', label: 'Без приоритета' },
-                { value: '1', label: 'P4' },
-                { value: '2', label: 'P3 Важно' },
-                { value: '3', label: 'P2 Срочно' },
-                { value: '4', label: 'P1 Срочно и Важно' },
+                { value: '1', label: '⚪ Не важно, не срочно' },
+                { value: '2', label: '🔵 Важно, не срочно' },
+                { value: '3', label: '🟠 Не важно и срочно' },
+                { value: '4', label: '🔴 Важно и срочно' },
               ]}
               w={160}
             />
@@ -93,6 +102,7 @@ export function TaskList({ filterParams, showAddButton = true }: Props) {
               onChange={setDueDate}
               clearable
               w={130}
+              valueFormat="D MMM YYYY"
             />
             {projects.length > 0 && (
               <Select

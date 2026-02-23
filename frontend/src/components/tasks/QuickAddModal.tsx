@@ -1,28 +1,39 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Group, Button } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useTaskStore } from '@/stores/taskStore';
+import { toNoonUTC } from '@/lib/dates';
 
 interface Props {
   opened: boolean;
   onClose: () => void;
+  defaultDueDate?: Date;
+  defaultProjectId?: string;
 }
 
-export function QuickAddModal({ opened, onClose }: Props) {
-  const { addTask, projects } = useTaskStore();
+export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectId }: Props) {
+  const { addTask, projects, refreshAllCounts } = useTaskStore();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('0');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (opened) {
+      setDueDate(defaultDueDate || null);
+      setProjectId(defaultProjectId || null);
+    }
+  }, [opened, defaultDueDate, defaultProjectId]);
 
   const handleAdd = async () => {
     if (!title.trim()) return;
     await addTask({
       title: title.trim(),
       priority: parseInt(priority),
-      due_date: dueDate?.toISOString() || null,
+      due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId,
     });
+    refreshAllCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);
@@ -47,14 +58,14 @@ export function QuickAddModal({ opened, onClose }: Props) {
           onChange={(v) => setPriority(v || '0')}
           data={[
             { value: '0', label: 'Без приоритета' },
-            { value: '1', label: 'P4' },
-            { value: '2', label: 'P3 Важно' },
-            { value: '3', label: 'P2 Срочно' },
-            { value: '4', label: 'P1 Срочно и Важно' },
+            { value: '1', label: '⚪ Не важно, не срочно' },
+            { value: '2', label: '🔵 Важно, не срочно' },
+            { value: '3', label: '🟠 Не важно и срочно' },
+            { value: '4', label: '🔴 Важно и срочно' },
           ]}
           w={180}
         />
-        <DatePickerInput size="sm" placeholder="Дата" value={dueDate} onChange={setDueDate} clearable w={150} />
+        <DatePickerInput size="sm" placeholder="Дата" value={dueDate} onChange={setDueDate} clearable w={150} valueFormat="D MMM YYYY" />
         {projects.length > 0 && (
           <Select
             size="sm"

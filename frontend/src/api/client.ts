@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { notifications } from '@mantine/notifications';
 
 const api = axios.create({ baseURL: '/api' });
 
@@ -14,7 +15,24 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
+      return Promise.reject(err);
     }
+
+    const data = err.response?.data;
+    const status = err.response?.status || 'Network Error';
+    const message = data?.error || err.message || 'Неизвестная ошибка';
+    const detail = data?.traceback
+      ? data.traceback.join('')
+      : data?.detail || '';
+
+    notifications.show({
+      title: `Ошибка ${status}${data?.type ? ` (${data.type})` : ''}`,
+      message: detail ? `${message}\n\n${detail}` : message,
+      color: 'red',
+      autoClose: detail ? 15000 : 5000,
+      styles: detail ? { description: { whiteSpace: 'pre-wrap', fontSize: '11px', maxHeight: '300px', overflow: 'auto' } } : undefined,
+    });
+
     return Promise.reject(err);
   }
 );
@@ -29,12 +47,14 @@ export const updateMe = (data: Record<string, unknown>) => api.patch('/auth/me',
 
 // Tasks
 export const getTasks = (params?: Record<string, unknown>) => api.get('/tasks', { params });
+export const getTaskCounts = () => api.get('/tasks/counts');
 export const createTask = (data: Record<string, unknown>) => api.post('/tasks', data);
 export const updateTask = (id: string, data: Record<string, unknown>) => api.patch(`/tasks/${id}`, data);
 export const deleteTask = (id: string) => api.delete(`/tasks/${id}`);
 
 // Projects
 export const getProjects = () => api.get('/projects');
+export const getProjectTaskCounts = () => api.get('/projects/task-counts');
 export const createProject = (data: Record<string, unknown>) => api.post('/projects', data);
 export const updateProject = (id: string, data: Record<string, unknown>) => api.patch(`/projects/${id}`, data);
 export const deleteProject = (id: string) => api.delete(`/projects/${id}`);

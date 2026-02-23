@@ -22,7 +22,7 @@ export function TodayPage() {
           <IconSparkles size={20} />
         </ActionIcon>
       </Group>
-      <TaskList filterParams={{ due_today: true, completed: false }} />
+      <TaskList filterParams={{ due_today: true, completed: false }} defaultDueDate={new Date()} />
       <AIModal opened={aiOpen} onClose={() => setAiOpen(false)} />
     </>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, TextInput, Textarea, Select, Group, Button, Stack } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { Task, useTaskStore } from '@/stores/taskStore';
+import { toNoonUTC } from '@/lib/dates';
 
 interface Props {
   task: Task | null;
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export function TaskEditModal({ task, onClose, filterParams }: Props) {
-  const { editTask, fetchTasks, projects, goals } = useTaskStore();
+  const { editTask, fetchTasks, refreshAllCounts, projects, goals } = useTaskStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('0');
@@ -35,11 +36,12 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
       title,
       description: description || null,
       priority: parseInt(priority),
-      due_date: dueDate?.toISOString() || null,
+      due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId,
       goal_id: goalId,
     });
     fetchTasks(filterParams);
+    refreshAllCounts();
     onClose();
   };
 
@@ -55,13 +57,13 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
             onChange={(v) => setPriority(v || '0')}
             data={[
               { value: '0', label: 'Без приоритета' },
-              { value: '1', label: 'P4' },
-              { value: '2', label: 'P3 Важно' },
-              { value: '3', label: 'P2 Срочно' },
-              { value: '4', label: 'P1 Срочно и Важно' },
+              { value: '1', label: '⚪ Не важно, не срочно' },
+              { value: '2', label: '🔵 Важно, не срочно' },
+              { value: '3', label: '🟠 Не важно и срочно' },
+              { value: '4', label: '🔴 Важно и срочно' },
             ]}
           />
-          <DatePickerInput label="Дедлайн" value={dueDate} onChange={setDueDate} clearable />
+          <DatePickerInput label="Срок" value={dueDate} onChange={setDueDate} clearable valueFormat="D MMM YYYY" />
         </Group>
         <Group grow>
           {projects.length > 0 && (
