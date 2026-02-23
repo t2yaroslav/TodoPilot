@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, TextInput, Textarea, Select, Group, Button, Stack } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { Task, useTaskStore } from '@/stores/taskStore';
+import { toNoonUTC } from '@/lib/dates';
 
 interface Props {
   task: Task | null;
@@ -35,7 +36,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
       title,
       description: description || null,
       priority: parseInt(priority),
-      due_date: dueDate?.toISOString() || null,
+      due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId,
       goal_id: goalId,
     });
@@ -62,7 +63,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
               { value: '4', label: '🔴 Важно и срочно' },
             ]}
           />
-          <DatePickerInput label="Дедлайн" value={dueDate} onChange={setDueDate} clearable />
+          <DatePickerInput label="Срок" value={dueDate} onChange={setDueDate} clearable />
         </Group>
         <Group grow>
           {projects.length > 0 && (

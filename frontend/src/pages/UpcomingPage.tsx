@@ -5,7 +5,7 @@ export function UpcomingPage() {
   return (
     <>
       <Title order={3} mb="md">Предстоящие</Title>
-      <TaskList filterParams={{ completed: false }} />
+      <TaskList filterParams={{ upcoming: true, completed: false }} />
     </>
   );
 }

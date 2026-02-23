@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, cast, Date, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -15,8 +15,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 @router.get("/counts")
 async def task_counts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start.replace(hour=23, minute=59, second=59)
+    today = date.today()
 
     base = select(func.count(Task.id)).where(
         Task.user_id == user.id,
@@ -24,7 +23,7 @@ async def task_counts(user: User = Depends(get_current_user), db: AsyncSession =
         Task.parent_task_id == None,  # noqa: E711
     )
 
-    today_q = base.where(and_(Task.due_date >= today_start, Task.due_date <= today_end))
+    today_q = base.where(cast(Task.due_date, Date) == today)
     inbox_q = base.where(Task.project_id == None, Task.goal_id == None)  # noqa: E711
     completed_q = select(func.count(Task.id)).where(
         Task.user_id == user.id,
@@ -45,11 +44,13 @@ async def list_tasks(
     goal_id: UUID | None = None,
     completed: bool | None = None,
     due_today: bool = False,
+    upcoming: bool = False,
     inbox: bool = False,
     parent_task_id: UUID | None = Query(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    today = date.today()
     q = select(Task).where(Task.user_id == user.id)
     if project_id:
         q = q.where(Task.project_id == project_id)
@@ -58,9 +59,9 @@ async def list_tasks(
     if completed is not None:
         q = q.where(Task.completed == completed)
     if due_today:
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = today_start.replace(hour=23, minute=59, second=59)
-        q = q.where(and_(Task.due_date >= today_start, Task.due_date <= today_end))
+        q = q.where(cast(Task.due_date, Date) == today)
+    elif upcoming:
+        q = q.where(cast(Task.due_date, Date) > today)
     elif inbox:
         q = q.where(Task.project_id == None, Task.goal_id == None)  # noqa: E711
     if parent_task_id:

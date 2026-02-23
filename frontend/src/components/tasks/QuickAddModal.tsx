@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Group, Button } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { useTaskStore } from '@/stores/taskStore';
+import { toNoonUTC } from '@/lib/dates';
 
 interface Props {
   opened: boolean;
@@ -29,7 +30,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
     await addTask({
       title: title.trim(),
       priority: parseInt(priority),
-      due_date: dueDate?.toISOString() || null,
+      due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId,
     });
     refreshAllCounts();

@@ -5,6 +5,7 @@ import { IconPlus } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
+import { toNoonUTC } from '@/lib/dates';
 
 interface Props {
   filterParams?: Record<string, unknown>;
@@ -36,7 +37,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
     await addTask({
       title: title.trim(),
       priority: parseInt(priority),
-      due_date: dueDate?.toISOString() || null,
+      due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId || filterParams?.project_id || null,
     });
     refreshAllCounts();
