@@ -23,6 +23,10 @@ async def lifespan(app: FastAPI):
         # Auto-migrate: widen color columns for existing databases
         await conn.execute(text("ALTER TABLE projects ALTER COLUMN color TYPE VARCHAR(25)"))
         await conn.execute(text("ALTER TABLE goals ALTER COLUMN color TYPE VARCHAR(25)"))
+        # Auto-migrate: add recurrence column to tasks if missing
+        await conn.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(20)"
+        ))
     yield
 
 

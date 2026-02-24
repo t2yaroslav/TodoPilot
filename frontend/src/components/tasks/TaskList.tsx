@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Stack, Text, TextInput, Group, Button, ActionIcon, Select, Box } from '@mantine/core';
-import { IconPlus, IconCalendar } from '@tabler/icons-react';
+import { IconPlus, IconCalendar, IconRepeat } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
@@ -24,6 +24,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
   const [priority, setPriority] = useState('0');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [recurrence, setRecurrence] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
@@ -43,12 +44,14 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
       priority: parseInt(priority),
       due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId || filterParams?.project_id || null,
+      recurrence: recurrence || null,
     });
     refreshAllCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);
     setProjectId(null);
+    setRecurrence(null);
     setAdding(false);
     fetchTasks(filterParams);
   };
@@ -108,6 +111,22 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
                 {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
               </Button>
             </DatePickerMenu>
+            <Select
+              size="xs"
+              placeholder="Повторение"
+              value={recurrence || ''}
+              onChange={(v) => setRecurrence(v || null)}
+              data={[
+                { value: '', label: 'Без повторения' },
+                { value: 'daily', label: 'Ежедневно' },
+                { value: 'weekly', label: 'Еженедельно' },
+                { value: 'biweekly', label: 'Раз в 2 нед.' },
+                { value: 'monthly', label: 'Ежемесячно' },
+                { value: 'yearly', label: 'Ежегодно' },
+              ]}
+              leftSection={<IconRepeat size={12} />}
+              w={150}
+            />
             {projects.length > 0 && (
               <Select
                 size="xs"
