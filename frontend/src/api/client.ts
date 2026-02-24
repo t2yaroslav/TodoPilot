@@ -97,6 +97,7 @@ export const deleteProject = (id: string) => api.delete(`/projects/${id}`);
 
 // Goals
 export const getGoals = () => api.get('/goals');
+export const getGoalStats = () => api.get('/goals/stats');
 export const createGoal = (data: Record<string, unknown>) => api.post('/goals', data);
 export const updateGoal = (id: string, data: Record<string, unknown>) => api.patch(`/goals/${id}`, data);
 export const deleteGoal = (id: string) => api.delete(`/goals/${id}`);

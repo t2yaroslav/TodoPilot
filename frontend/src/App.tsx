@@ -10,6 +10,7 @@ import { ProjectPage } from '@/pages/ProjectPage';
 import { CompletedPage } from '@/pages/CompletedPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { UpcomingPage } from '@/pages/UpcomingPage';
+import { GoalsPage } from '@/pages/GoalsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuthStore();
@@ -42,6 +43,7 @@ export default function App() {
                   <Route path="/upcoming" element={<UpcomingPage />} />
                   <Route path="/completed" element={<CompletedPage />} />
                   <Route path="/project/:id" element={<ProjectPage />} />
+                  <Route path="/goals" element={<GoalsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                 </Routes>
               </AppLayout>

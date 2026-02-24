@@ -45,6 +45,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
       priority: parseInt(priority),
       due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId || filterParams?.project_id || null,
+      goal_id: filterParams?.goal_id || null,
       recurrence: recurrence || null,
     });
     refreshAllCounts();

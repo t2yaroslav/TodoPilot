@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function TaskEditModal({ task, onClose, filterParams }: Props) {
-  const { editTask, fetchTasks, refreshAllCounts, projects, goals } = useTaskStore();
+  const { editTask, fetchTasks, refreshAllCounts, projects, goals, fetchGoals } = useTaskStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('0');
@@ -35,6 +35,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
       setProjectId(task.project_id);
       setGoalId(task.goal_id);
       setRecurrence(task.recurrence);
+      if (goals.length === 0) fetchGoals();
     }
   }, [task]);
 
@@ -107,24 +108,22 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
           )}
         </Group>
         <Group grow>
-          {projects.length > 0 && (
-            <Select
-              label="Проект"
-              value={projectId}
-              onChange={setProjectId}
-              data={projects.map((p) => ({ value: p.id, label: p.title }))}
-              clearable
-            />
-          )}
-          {goals.length > 0 && (
-            <Select
-              label="Цель"
-              value={goalId}
-              onChange={setGoalId}
-              data={goals.map((g) => ({ value: g.id, label: g.title }))}
-              clearable
-            />
-          )}
+          <Select
+            label="Проект"
+            value={projectId}
+            onChange={setProjectId}
+            data={projects.map((p) => ({ value: p.id, label: p.title }))}
+            clearable
+            placeholder="Без проекта"
+          />
+          <Select
+            label="Цель"
+            value={goalId}
+            onChange={setGoalId}
+            data={goals.map((g) => ({ value: g.id, label: g.title }))}
+            clearable
+            placeholder="Без цели"
+          />
         </Group>
         <Group justify="flex-end">
           <Button variant="subtle" onClick={onClose}>Отмена</Button>

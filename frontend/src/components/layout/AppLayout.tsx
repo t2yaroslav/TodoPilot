@@ -33,6 +33,7 @@ import {
   IconDots,
   IconEdit,
   IconTrash,
+  IconTarget,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore, Project } from '@/stores/taskStore';
@@ -182,6 +183,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </UnstyledButton>
                   </Menu.Target>
                   <Menu.Dropdown>
+                    <Menu.Item leftSection={<IconTarget size={14} />} onClick={() => handleNavigate('/goals')}>
+                      Мои цели
+                    </Menu.Item>
                     <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => handleNavigate('/settings')}>
                       Настройки
                     </Menu.Item>

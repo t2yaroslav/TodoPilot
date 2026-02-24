@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Group, Button } from '@mantine/core';
-import { IconCalendar, IconRepeat } from '@tabler/icons-react';
+import { IconCalendar, IconRepeat, IconTarget } from '@tabler/icons-react';
 import { useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
@@ -18,18 +18,21 @@ interface Props {
 }
 
 export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectId }: Props) {
-  const { addTask, projects, refreshAllCounts } = useTaskStore();
+  const { addTask, projects, goals, fetchGoals, refreshAllCounts } = useTaskStore();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('0');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [goalId, setGoalId] = useState<string | null>(null);
   const [recurrence, setRecurrence] = useState<string | null>(null);
 
   useEffect(() => {
     if (opened) {
       setDueDate(defaultDueDate || null);
       setProjectId(defaultProjectId || null);
+      setGoalId(null);
       setRecurrence(null);
+      if (goals.length === 0) fetchGoals();
     }
   }, [opened, defaultDueDate, defaultProjectId]);
 
@@ -40,6 +43,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
       priority: parseInt(priority),
       due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId,
+      goal_id: goalId,
       recurrence: recurrence || null,
     });
     refreshAllCounts();
@@ -47,6 +51,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
     setPriority('0');
     setDueDate(null);
     setProjectId(null);
+    setGoalId(null);
     setRecurrence(null);
     onClose();
   };
@@ -100,6 +105,18 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
             value={projectId}
             onChange={setProjectId}
             data={projects.map((p) => ({ value: p.id, label: p.title }))}
+            clearable
+            w={160}
+          />
+        )}
+        {goals.length > 0 && (
+          <Select
+            size="sm"
+            placeholder="Цель"
+            value={goalId}
+            onChange={setGoalId}
+            data={goals.map((g) => ({ value: g.id, label: g.title }))}
+            leftSection={<IconTarget size={14} />}
             clearable
             w={160}
           />

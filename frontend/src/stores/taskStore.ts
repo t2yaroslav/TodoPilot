@@ -98,11 +98,18 @@ function pickNextProjectColor(existingColors: string[]): string {
   return hslToHex(Math.round(bestHue), 0.65, 0.5);
 }
 
+export interface GoalStats {
+  total_tasks: number;
+  completed_tasks: number;
+  projects: number;
+}
+
 interface TaskStore {
   tasks: Task[];
   projects: Project[];
   goals: Goal[];
   projectTaskCounts: Record<string, number>;
+  goalStats: Record<string, GoalStats>;
   navCounts: NavCounts;
   loading: boolean;
 
@@ -121,6 +128,7 @@ interface TaskStore {
   removeProject: (id: string) => Promise<void>;
 
   fetchGoals: () => Promise<void>;
+  fetchGoalStats: () => Promise<void>;
   addGoal: (data: Record<string, unknown>) => Promise<Goal>;
   editGoal: (id: string, data: Record<string, unknown>) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
@@ -131,6 +139,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   projects: [],
   goals: [],
   projectTaskCounts: {},
+  goalStats: {},
   navCounts: { today: 0, inbox: 0, completed: 0 },
   loading: false,
 
@@ -208,6 +217,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   fetchGoals: async () => {
     const { data } = await api.getGoals();
     set({ goals: data });
+  },
+
+  fetchGoalStats: async () => {
+    const { data } = await api.getGoalStats();
+    set({ goalStats: data });
   },
 
   addGoal: async (goalData) => {
