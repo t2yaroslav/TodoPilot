@@ -124,7 +124,7 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
             </Text>
           )}
           {(task.due_date || task.recurrence || project) && (
-            <Group gap="xs" mt={4}>
+            <Group gap="xs" mt={4} onClick={(e) => e.stopPropagation()}>
               {task.due_date && (
                 <DatePickerMenu
                   value={new Date(task.due_date)}

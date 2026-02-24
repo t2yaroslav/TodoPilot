@@ -64,7 +64,7 @@ export function CompletedTaskList({ filterParams }: Props) {
     <Stack gap={0}>
       {dateGroups.map((group) => (
         <Box key={group.key} mb="xs">
-          <Text size="xs" fw={700} px="sm" py={6} c="dimmed" style={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <Text size="sm" fw={600} px="sm" py={6}>
             {group.label}
           </Text>
           {group.tasks.map((task) => (
