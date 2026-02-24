@@ -3,15 +3,45 @@ import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from .database import engine
 from .models import Base
 from .routers import ai, auth, goals, projects, stats, tasks
 
 DEV_MODE = os.getenv("FASTAPI_ENV", "development") != "production"
+
+
+def _build_error_detail(request: Request, exc: Exception) -> dict:
+    """Build a detailed error response for dev mode."""
+    detail: dict = {
+        "error": str(exc),
+        "type": type(exc).__name__,
+    }
+    if DEV_MODE:
+        detail["traceback"] = traceback.format_exception(type(exc), exc, exc.__traceback__)
+        detail["method"] = request.method
+        detail["url"] = str(request.url)
+        # Extra context for DB errors
+        if isinstance(exc, SQLAlchemyError):
+            orig = getattr(exc, "orig", None)
+            if orig:
+                detail["db_error"] = str(orig)
+                detail["db_error_type"] = type(orig).__name__
+            stmt = getattr(exc, "statement", None)
+            if stmt:
+                detail["sql"] = str(stmt)
+            params = getattr(exc, "params", None)
+            if params:
+                try:
+                    detail["sql_params"] = str(params)
+                except Exception:
+                    pass
+    return detail
 
 
 @asynccontextmanager
@@ -23,6 +53,10 @@ async def lifespan(app: FastAPI):
         # Auto-migrate: widen color columns for existing databases
         await conn.execute(text("ALTER TABLE projects ALTER COLUMN color TYPE VARCHAR(25)"))
         await conn.execute(text("ALTER TABLE goals ALTER COLUMN color TYPE VARCHAR(25)"))
+        # Auto-migrate: add recurrence column to tasks if missing
+        await conn.execute(text(
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(20)"
+        ))
     yield
 
 
@@ -37,12 +71,32 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    detail = _build_error_detail(request, exc)
+    return JSONResponse(status_code=500, content=detail)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    detail: dict = {
+        "error": "Ошибка валидации запроса",
+        "type": "RequestValidationError",
+    }
+    if DEV_MODE:
+        detail["validation_errors"] = exc.errors()
+        detail["method"] = request.method
+        detail["url"] = str(request.url)
+        try:
+            detail["body"] = str(exc.body)
+        except Exception:
+            pass
+    return JSONResponse(status_code=422, content=detail)
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    detail = {"error": str(exc)}
-    if DEV_MODE:
-        detail["traceback"] = traceback.format_exception(exc)
-        detail["type"] = type(exc).__name__
+    detail = _build_error_detail(request, exc)
     return JSONResponse(status_code=500, content=detail)
 
 

@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Stack, Text, TextInput, Group, Button, ActionIcon, Select, Box } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconCalendar, IconRepeat } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
+import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ru';
+
+dayjs.locale('ru');
 
 interface Props {
   filterParams?: Record<string, unknown>;
@@ -20,6 +24,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
   const [priority, setPriority] = useState('0');
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [recurrence, setRecurrence] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
@@ -39,12 +44,14 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
       priority: parseInt(priority),
       due_date: dueDate ? toNoonUTC(dueDate) : null,
       project_id: projectId || filterParams?.project_id || null,
+      recurrence: recurrence || null,
     });
     refreshAllCounts();
     setTitle('');
     setPriority('0');
     setDueDate(null);
     setProjectId(null);
+    setRecurrence(null);
     setAdding(false);
     fetchTasks(filterParams);
   };
@@ -55,7 +62,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
   return (
     <Stack gap={0}>
       {activeTasks.map((task) => (
-        <TaskItem key={task.id} task={task} onEdit={setEditingTask} />
+        <TaskItem key={task.id} task={task} onEdit={setEditingTask} filterParams={filterParams} />
       ))}
 
       {showAddButton && !adding && (
@@ -95,14 +102,30 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
               ]}
               w={160}
             />
-            <DatePickerInput
+            <DatePickerMenu value={dueDate} onChange={setDueDate}>
+              <Button
+                size="xs"
+                variant="default"
+                leftSection={<IconCalendar size={14} />}
+              >
+                {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
+              </Button>
+            </DatePickerMenu>
+            <Select
               size="xs"
-              placeholder="Дата"
-              value={dueDate}
-              onChange={setDueDate}
-              clearable
-              w={130}
-              valueFormat="D MMM YYYY"
+              placeholder="Повторение"
+              value={recurrence || ''}
+              onChange={(v) => setRecurrence(v || null)}
+              data={[
+                { value: '', label: 'Без повторения' },
+                { value: 'daily', label: 'Ежедневно' },
+                { value: 'weekly', label: 'Еженедельно' },
+                { value: 'biweekly', label: 'Раз в 2 нед.' },
+                { value: 'monthly', label: 'Ежемесячно' },
+                { value: 'yearly', label: 'Ежегодно' },
+              ]}
+              leftSection={<IconRepeat size={12} />}
+              w={150}
             />
             {projects.length > 0 && (
               <Select
@@ -127,7 +150,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
             Завершено ({completedTasks.length})
           </Text>
           {completedTasks.map((task) => (
-            <TaskItem key={task.id} task={task} onEdit={setEditingTask} />
+            <TaskItem key={task.id} task={task} onEdit={setEditingTask} filterParams={filterParams} />
           ))}
         </>
       )}

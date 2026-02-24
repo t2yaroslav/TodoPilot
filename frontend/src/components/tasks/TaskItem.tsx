@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { ActionIcon, Checkbox, Group, Text, Box } from '@mantine/core';
-import { IconTrash, IconEdit, IconCalendar, IconHash } from '@tabler/icons-react';
+import { ActionIcon, Checkbox, Group, Text, Box, Tooltip } from '@mantine/core';
+import { IconTrash, IconEdit, IconCalendar, IconHash, IconRepeat } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
+import { DatePickerMenu } from './DatePickerMenu';
+import { toNoonUTC } from '@/lib/dates';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -23,6 +25,14 @@ const PRIORITY_HEX: Record<number, string> = {
   0: 'var(--mantine-color-gray-4)',
 };
 
+const RECURRENCE_LABELS: Record<string, string> = {
+  daily: 'Ежедневно',
+  weekly: 'Еженедельно',
+  biweekly: 'Раз в 2 недели',
+  monthly: 'Ежемесячно',
+  yearly: 'Ежегодно',
+};
+
 function formatRelativeDate(dateStr: string): string {
   const date = dayjs(dateStr);
   const today = dayjs().startOf('day');
@@ -32,7 +42,7 @@ function formatRelativeDate(dateStr: string): string {
   if (diff === 1) return 'Завтра';
   if (diff === -1) return 'Вчера';
   if (diff > 1 && diff <= 6) return date.format('dddd');
-  return date.format('D.MM.YYYY');
+  return date.format('D MMM');
 }
 
 function getDateColor(dateStr: string): string {
@@ -49,15 +59,23 @@ function getDateColor(dateStr: string): string {
 interface Props {
   task: Task;
   onEdit?: (task: Task) => void;
+  filterParams?: Record<string, unknown>;
 }
 
-export function TaskItem({ task, onEdit }: Props) {
-  const { toggleTask, removeTask, refreshAllCounts } = useTaskStore();
+export function TaskItem({ task, onEdit, filterParams }: Props) {
+  const { toggleTask, removeTask, editTask, fetchTasks, refreshAllCounts } = useTaskStore();
   const { projects } = useTaskStore();
   const project = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
   const [hovered, setHovered] = useState(false);
 
   const dateColor = task.due_date ? getDateColor(task.due_date) : undefined;
+
+  const handleDateChange = (date: Date | null) => {
+    editTask(task.id, { due_date: date ? toNoonUTC(date) : null }).then(() => {
+      fetchTasks(filterParams);
+      refreshAllCounts();
+    });
+  };
 
   return (
     <Box
@@ -77,7 +95,10 @@ export function TaskItem({ task, onEdit }: Props) {
           checked={task.completed}
           onChange={(e) => {
             e.stopPropagation();
-            toggleTask(task.id, e.currentTarget.checked).then(refreshAllCounts);
+            toggleTask(task.id, e.currentTarget.checked).then(() => {
+              fetchTasks(filterParams);
+              refreshAllCounts();
+            });
           }}
           onClick={(e) => e.stopPropagation()}
           color={PRIORITY_COLORS[task.priority] || 'gray'}
@@ -102,15 +123,41 @@ export function TaskItem({ task, onEdit }: Props) {
               {task.description}
             </Text>
           )}
-          {(task.due_date || project) && (
-            <Group gap="xs" mt={4}>
+          {(task.due_date || task.recurrence || project) && (
+            <Group gap="xs" mt={4} onClick={(e) => e.stopPropagation()}>
               {task.due_date && (
-                <Group gap={4} wrap="nowrap">
-                  <IconCalendar size={12} color={dateColor} />
-                  <Text size="xs" style={{ color: dateColor }}>
-                    {formatRelativeDate(task.due_date)}
-                  </Text>
-                </Group>
+                <DatePickerMenu
+                  value={new Date(task.due_date)}
+                  onChange={handleDateChange}
+                >
+                  <Group
+                    gap={4}
+                    wrap="nowrap"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <IconCalendar size={12} color={dateColor} />
+                    <Text size="xs" style={{ color: dateColor }}>
+                      {formatRelativeDate(task.due_date)}
+                    </Text>
+                    {task.recurrence && (
+                      <Tooltip label={RECURRENCE_LABELS[task.recurrence] || task.recurrence}>
+                        <Box style={{ display: 'flex', alignItems: 'center' }}>
+                          <IconRepeat size={12} color={dateColor} />
+                        </Box>
+                      </Tooltip>
+                    )}
+                  </Group>
+                </DatePickerMenu>
+              )}
+              {!task.due_date && task.recurrence && (
+                <Tooltip label={RECURRENCE_LABELS[task.recurrence] || task.recurrence}>
+                  <Group gap={4} wrap="nowrap">
+                    <IconRepeat size={12} color="var(--mantine-color-dimmed)" />
+                    <Text size="xs" c="dimmed">
+                      {RECURRENCE_LABELS[task.recurrence] || task.recurrence}
+                    </Text>
+                  </Group>
+                </Tooltip>
               )}
               <Box style={{ flex: 1 }} />
               {project && (

@@ -96,6 +96,7 @@ class TaskCreate(BaseModel):
     project_id: UUID | None = None
     goal_id: UUID | None = None
     parent_task_id: UUID | None = None
+    recurrence: str | None = None  # daily, weekly, biweekly, monthly, yearly
 
 
 class TaskUpdate(BaseModel):
@@ -107,6 +108,7 @@ class TaskUpdate(BaseModel):
     project_id: UUID | None = None
     goal_id: UUID | None = None
     position: int | None = None
+    recurrence: str | None = None
 
 
 class TaskOut(BaseModel):
@@ -120,6 +122,7 @@ class TaskOut(BaseModel):
     project_id: UUID | None
     goal_id: UUID | None
     parent_task_id: UUID | None
+    recurrence: str | None
     position: int
     created_at: datetime
     updated_at: datetime
