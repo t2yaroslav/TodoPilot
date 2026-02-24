@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppShell,
@@ -20,14 +20,14 @@ import { useMediaQuery } from '@mantine/hooks';
 import {
   IconInbox,
   IconCalendarEvent,
-  IconCalendarDue,
+  IconCalendarWeek,
   IconCircleCheck,
   IconPlus,
   IconSettings,
   IconLogout,
   IconChevronDown,
   IconChevronRight,
-  IconFolder,
+  IconHash,
   IconSun,
   IconMoon,
   IconDots,
@@ -67,7 +67,7 @@ function ProjectNavItem({ project, active, taskCount, onNavigate }: {
   return (
     <NavLink
       label={project.title}
-      leftSection={<IconFolder size={16} color={project.color} />}
+      leftSection={<IconHash size={16} color={project.color} />}
       active={active}
       onClick={() => onNavigate()}
       variant="light"
@@ -125,7 +125,7 @@ function ProjectNavItem({ project, active, taskCount, onNavigate }: {
 const NAV_ITEMS = [
   { label: 'Входящие', icon: IconInbox, path: '/inbox', countKey: 'inbox' as const },
   { label: 'Сегодня', icon: IconCalendarEvent, path: '/today', countKey: 'today' as const },
-  { label: 'Предстоящие', icon: IconCalendarDue, path: '/upcoming', countKey: null },
+  { label: 'Предстоящие', icon: IconCalendarWeek, path: '/upcoming', countKey: null },
   { label: 'Выполнено', icon: IconCircleCheck, path: '/completed', countKey: 'completed' as const },
 ];
 
