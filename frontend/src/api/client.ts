@@ -9,6 +9,41 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+function buildDevDetail(data: Record<string, unknown>): string {
+  const parts: string[] = [];
+
+  if (data.method && data.url) {
+    parts.push(`${data.method} ${data.url}`);
+  }
+
+  // DB-specific info
+  if (data.db_error) {
+    parts.push(`\nDB: ${data.db_error_type || 'DatabaseError'}\n${data.db_error}`);
+  }
+  if (data.sql) {
+    parts.push(`\nSQL: ${data.sql}`);
+  }
+  if (data.sql_params) {
+    parts.push(`Params: ${data.sql_params}`);
+  }
+
+  // Validation errors
+  if (data.validation_errors && Array.isArray(data.validation_errors)) {
+    const errs = data.validation_errors.map((e: Record<string, unknown>) =>
+      `  ${(e.loc as string[])?.join(' → ') || '?'}: ${e.msg}`
+    ).join('\n');
+    parts.push(`\nВалидация:\n${errs}`);
+    if (data.body) parts.push(`Body: ${data.body}`);
+  }
+
+  // Traceback
+  if (data.traceback && Array.isArray(data.traceback)) {
+    parts.push(`\n${data.traceback.join('')}`);
+  }
+
+  return parts.join('\n');
+}
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -20,17 +55,18 @@ api.interceptors.response.use(
 
     const data = err.response?.data;
     const status = err.response?.status || 'Network Error';
-    const message = data?.error || err.message || 'Неизвестная ошибка';
-    const detail = data?.traceback
-      ? data.traceback.join('')
-      : data?.detail || '';
+    const message = data?.error || data?.detail || err.message || 'Неизвестная ошибка';
+
+    // Build detailed dev info from all available fields
+    const hasDevInfo = data?.traceback || data?.db_error || data?.validation_errors;
+    const detail = hasDevInfo ? buildDevDetail(data) : (data?.detail || '');
 
     notifications.show({
       title: `Ошибка ${status}${data?.type ? ` (${data.type})` : ''}`,
       message: detail ? `${message}\n\n${detail}` : message,
       color: 'red',
-      autoClose: detail ? 15000 : 5000,
-      styles: detail ? { description: { whiteSpace: 'pre-wrap', fontSize: '11px', maxHeight: '300px', overflow: 'auto' } } : undefined,
+      autoClose: detail ? false : 5000,
+      styles: detail ? { description: { whiteSpace: 'pre-wrap', fontSize: '11px', maxHeight: '400px', overflow: 'auto', fontFamily: 'monospace' } } : undefined,
     });
 
     return Promise.reject(err);

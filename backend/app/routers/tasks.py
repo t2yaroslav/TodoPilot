@@ -1,4 +1,5 @@
-from datetime import date, datetime, timezone
+import calendar
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,6 +10,24 @@ from ..database import get_db
 from ..models import Task, User
 from ..schemas import TaskCreate, TaskOut, TaskUpdate
 from .auth import get_current_user
+
+
+def _add_months(dt: datetime, months: int) -> datetime:
+    """Add months to a datetime, clamping the day to the last day of the target month."""
+    month = dt.month - 1 + months
+    year = dt.year + month // 12
+    month = month % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
+
+
+RECURRENCE_DELTAS = {
+    "daily": lambda d: d + timedelta(days=1),
+    "weekly": lambda d: d + timedelta(weeks=1),
+    "biweekly": lambda d: d + timedelta(weeks=2),
+    "monthly": lambda d: _add_months(d, 1),
+    "yearly": lambda d: _add_months(d, 12),
+}
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -111,14 +130,48 @@ async def update_task(
         raise HTTPException(status_code=404)
 
     data = body.model_dump(exclude_unset=True)
+    should_recur = False
     if "completed" in data:
         if data["completed"] and not task.completed:
             task.completed_at = datetime.now(timezone.utc)
+            # Check if this is a recurring task that needs a new occurrence
+            if task.recurrence and task.recurrence in RECURRENCE_DELTAS:
+                should_recur = True
         elif not data["completed"]:
             task.completed_at = None
 
     for field, value in data.items():
         setattr(task, field, value)
+
+    # Create next occurrence for recurring tasks
+    if should_recur:
+        next_due = None
+        if task.due_date:
+            calc = RECURRENCE_DELTAS[task.recurrence]
+            next_due = calc(task.due_date)
+        else:
+            # No due date — set next due relative to today
+            calc = RECURRENCE_DELTAS[task.recurrence]
+            next_due = calc(datetime.now(timezone.utc))
+
+        # Get next position
+        pos_result = await db.execute(
+            select(func.coalesce(func.max(Task.position), -1)).where(Task.user_id == user.id)
+        )
+        max_pos = pos_result.scalar()
+
+        new_task = Task(
+            user_id=user.id,
+            title=task.title,
+            description=task.description,
+            priority=task.priority,
+            due_date=next_due,
+            project_id=task.project_id,
+            goal_id=task.goal_id,
+            recurrence=task.recurrence,
+            position=max_pos + 1,
+        )
+        db.add(new_task)
 
     await db.commit()
     await db.refresh(task)

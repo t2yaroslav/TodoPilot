@@ -12,6 +12,7 @@ export interface Task {
   project_id: string | null;
   goal_id: string | null;
   parent_task_id: string | null;
+  recurrence: string | null;
   position: number;
   created_at: string;
   updated_at: string;
