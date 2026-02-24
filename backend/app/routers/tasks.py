@@ -29,6 +29,47 @@ RECURRENCE_DELTAS = {
     "yearly": lambda d: _add_months(d, 12),
 }
 
+
+def _compute_next_due(recurrence: str, current_due: datetime) -> datetime:
+    """Compute the next due date for any recurrence pattern.
+
+    Supports simple patterns (daily, weekly, etc.) and extended ones:
+      - weekly:1,3   → every Monday and Wednesday  (ISO weekday 1-7)
+      - monthly:1,15 → every 1st and 15th of month
+    """
+    # Simple patterns
+    if recurrence in RECURRENCE_DELTAS:
+        return RECURRENCE_DELTAS[recurrence](current_due)
+
+    # Extended weekly: "weekly:1,3"
+    if recurrence.startswith("weekly:"):
+        days = sorted(int(d) for d in recurrence.split(":")[1].split(","))
+        current_iso = current_due.isoweekday()  # 1=Mon … 7=Sun
+        future = [d for d in days if d > current_iso]
+        if future:
+            delta = future[0] - current_iso
+        else:
+            delta = 7 - current_iso + days[0]
+        return current_due + timedelta(days=delta)
+
+    # Extended monthly: "monthly:1,15"
+    if recurrence.startswith("monthly:"):
+        days = sorted(int(d) for d in recurrence.split(":")[1].split(","))
+        current_day = current_due.day
+        future = [d for d in days if d > current_day]
+        if future:
+            target_day = future[0]
+            max_day = calendar.monthrange(current_due.year, current_due.month)[1]
+            return current_due.replace(day=min(target_day, max_day))
+        else:
+            next_month = _add_months(current_due, 1)
+            target_day = days[0]
+            max_day = calendar.monthrange(next_month.year, next_month.month)[1]
+            return next_month.replace(day=min(target_day, max_day))
+
+    # Fallback: treat as weekly
+    return current_due + timedelta(weeks=1)
+
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
@@ -135,7 +176,7 @@ async def update_task(
         if data["completed"] and not task.completed:
             task.completed_at = datetime.now(timezone.utc)
             # Check if this is a recurring task that needs a new occurrence
-            if task.recurrence and task.recurrence in RECURRENCE_DELTAS:
+            if task.recurrence:
                 should_recur = True
         elif not data["completed"]:
             task.completed_at = None
@@ -147,12 +188,9 @@ async def update_task(
     if should_recur:
         next_due = None
         if task.due_date:
-            calc = RECURRENCE_DELTAS[task.recurrence]
-            next_due = calc(task.due_date)
+            next_due = _compute_next_due(task.recurrence, task.due_date)
         else:
-            # No due date — set next due relative to today
-            calc = RECURRENCE_DELTAS[task.recurrence]
-            next_due = calc(datetime.now(timezone.utc))
+            next_due = _compute_next_due(task.recurrence, datetime.now(timezone.utc))
 
         # Get next position
         pos_result = await db.execute(

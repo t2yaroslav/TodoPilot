@@ -4,27 +4,11 @@ import { IconCalendar, IconRepeat } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
+import { getRecurrenceLabel, getRecurrenceSelectData } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
 dayjs.locale('ru');
-
-const RECURRENCE_OPTIONS = [
-  { value: '', label: 'Без повторения' },
-  { value: 'daily', label: 'Ежедневно' },
-  { value: 'weekly', label: 'Еженедельно' },
-  { value: 'biweekly', label: 'Раз в 2 недели' },
-  { value: 'monthly', label: 'Ежемесячно' },
-  { value: 'yearly', label: 'Ежегодно' },
-];
-
-const RECURRENCE_LABELS: Record<string, string> = {
-  daily: 'Ежедневно',
-  weekly: 'Еженедельно',
-  biweekly: 'Раз в 2 недели',
-  monthly: 'Ежемесячно',
-  yearly: 'Ежегодно',
-};
 
 interface Props {
   task: Task | null;
@@ -90,7 +74,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
           />
           <Box>
             <Text size="sm" fw={500} mb={4}>Срок</Text>
-            <DatePickerMenu value={dueDate} onChange={setDueDate}>
+            <DatePickerMenu value={dueDate} onChange={setDueDate} onRecurrenceChange={setRecurrence}>
               <Button
                 variant="default"
                 leftSection={<IconCalendar size={16} />}
@@ -107,7 +91,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
             label="Повторение"
             value={recurrence || ''}
             onChange={(v) => setRecurrence(v || null)}
-            data={RECURRENCE_OPTIONS}
+            data={getRecurrenceSelectData(recurrence)}
             leftSection={<IconRepeat size={16} />}
           />
           {recurrence && dueDate && (
@@ -116,7 +100,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
               <Group gap={4}>
                 <IconRepeat size={14} color="var(--mantine-color-blue-5)" />
                 <Text size="sm" c="blue">
-                  {RECURRENCE_LABELS[recurrence]}
+                  {getRecurrenceLabel(recurrence)}
                 </Text>
               </Group>
             </Box>
