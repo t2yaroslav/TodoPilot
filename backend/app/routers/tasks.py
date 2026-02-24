@@ -1,7 +1,7 @@
+import calendar
 from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
-from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, and_, cast, Date, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,12 +12,21 @@ from ..schemas import TaskCreate, TaskOut, TaskUpdate
 from .auth import get_current_user
 
 
+def _add_months(dt: datetime, months: int) -> datetime:
+    """Add months to a datetime, clamping the day to the last day of the target month."""
+    month = dt.month - 1 + months
+    year = dt.year + month // 12
+    month = month % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
+
+
 RECURRENCE_DELTAS = {
     "daily": lambda d: d + timedelta(days=1),
     "weekly": lambda d: d + timedelta(weeks=1),
     "biweekly": lambda d: d + timedelta(weeks=2),
-    "monthly": lambda d: d + relativedelta(months=1),
-    "yearly": lambda d: d + relativedelta(years=1),
+    "monthly": lambda d: _add_months(d, 1),
+    "yearly": lambda d: _add_months(d, 12),
 }
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
