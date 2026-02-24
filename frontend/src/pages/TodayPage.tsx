@@ -3,7 +3,7 @@ import { Group, Title, Text, ActionIcon } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
-import { TaskList } from '@/components/tasks/TaskList';
+import { PriorityTaskList } from '@/components/tasks/PriorityTaskList';
 import { AIModal } from '@/components/ai/AIModal';
 
 dayjs.locale('ru');
@@ -22,7 +22,7 @@ export function TodayPage() {
           <IconSparkles size={20} />
         </ActionIcon>
       </Group>
-      <TaskList filterParams={{ due_today: true, completed: false }} defaultDueDate={new Date()} />
+      <PriorityTaskList filterParams={{ due_today: true, completed: false }} defaultDueDate={new Date()} />
       <AIModal opened={aiOpen} onClose={() => setAiOpen(false)} />
     </>
   );
