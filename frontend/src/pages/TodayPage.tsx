@@ -16,7 +16,7 @@ export function TodayPage() {
       <Group justify="space-between" mb="md">
         <div>
           <Title order={3}>Сегодня</Title>
-          <Text size="sm" c="dimmed">{dayjs().format('dd, D MMMM YYYY')}</Text>
+          <Text size="sm" c="dimmed">{dayjs().format('dd, D MMMM')}</Text>
         </div>
         <ActionIcon variant="light" color="indigo" size="lg" onClick={() => setAiOpen(true)} title="AI-помощник">
           <IconSparkles size={20} />

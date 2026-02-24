@@ -97,7 +97,7 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
                 fullWidth
                 styles={{ inner: { justifyContent: 'flex-start' } }}
               >
-                {dueDate ? dayjs(dueDate).format('D MMM YYYY') : 'Выбрать дату'}
+                {dueDate ? dayjs(dueDate).format('D MMM') : 'Выбрать дату'}
               </Button>
             </DatePickerMenu>
           </Box>

@@ -42,7 +42,7 @@ function formatRelativeDate(dateStr: string): string {
   if (diff === 1) return 'Завтра';
   if (diff === -1) return 'Вчера';
   if (diff > 1 && diff <= 6) return date.format('dddd');
-  return date.format('D.MM.YYYY');
+  return date.format('D MMM');
 }
 
 function getDateColor(dateStr: string): string {
@@ -133,7 +133,6 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
                   <Group
                     gap={4}
                     wrap="nowrap"
-                    onClick={(e) => e.stopPropagation()}
                     style={{ cursor: 'pointer' }}
                   >
                     <IconCalendar size={12} color={dateColor} />

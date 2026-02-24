@@ -109,7 +109,7 @@ export function DatePickerMenu({ value, onChange, children, withinPortal = true 
       closeOnItemClick={false}
     >
       <Menu.Target>
-        <Box style={{ cursor: 'pointer' }} onClick={() => setOpened(!opened)}>
+        <Box style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setOpened(!opened); }}>
           {children}
         </Box>
       </Menu.Target>
