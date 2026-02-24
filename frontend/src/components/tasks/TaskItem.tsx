@@ -4,6 +4,7 @@ import { IconTrash, IconEdit, IconCalendar, IconHash, IconRepeat } from '@tabler
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
+import { getRecurrenceLabel } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -23,14 +24,6 @@ const PRIORITY_HEX: Record<number, string> = {
   2: 'var(--mantine-color-blue-5)',
   1: 'var(--mantine-color-gray-5)',
   0: 'var(--mantine-color-gray-4)',
-};
-
-const RECURRENCE_LABELS: Record<string, string> = {
-  daily: 'Ежедневно',
-  weekly: 'Еженедельно',
-  biweekly: 'Раз в 2 недели',
-  monthly: 'Ежемесячно',
-  yearly: 'Ежегодно',
 };
 
 function formatRelativeDate(dateStr: string): string {
@@ -140,7 +133,7 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
                       {formatRelativeDate(task.due_date)}
                     </Text>
                     {task.recurrence && (
-                      <Tooltip label={RECURRENCE_LABELS[task.recurrence] || task.recurrence}>
+                      <Tooltip label={getRecurrenceLabel(task.recurrence)}>
                         <Box style={{ display: 'flex', alignItems: 'center' }}>
                           <IconRepeat size={12} color={dateColor} />
                         </Box>
@@ -150,11 +143,11 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
                 </DatePickerMenu>
               )}
               {!task.due_date && task.recurrence && (
-                <Tooltip label={RECURRENCE_LABELS[task.recurrence] || task.recurrence}>
+                <Tooltip label={getRecurrenceLabel(task.recurrence)}>
                   <Group gap={4} wrap="nowrap">
                     <IconRepeat size={12} color="var(--mantine-color-dimmed)" />
                     <Text size="xs" c="dimmed">
-                      {RECURRENCE_LABELS[task.recurrence] || task.recurrence}
+                      {getRecurrenceLabel(task.recurrence)}
                     </Text>
                   </Group>
                 </Tooltip>

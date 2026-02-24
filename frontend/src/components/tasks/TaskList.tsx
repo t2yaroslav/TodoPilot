@@ -6,6 +6,7 @@ import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
+import { getRecurrenceSelectData } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -102,7 +103,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
               ]}
               w={160}
             />
-            <DatePickerMenu value={dueDate} onChange={setDueDate}>
+            <DatePickerMenu value={dueDate} onChange={setDueDate} onRecurrenceChange={setRecurrence}>
               <Button
                 size="xs"
                 variant="default"
@@ -116,14 +117,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
               placeholder="Повторение"
               value={recurrence || ''}
               onChange={(v) => setRecurrence(v || null)}
-              data={[
-                { value: '', label: 'Без повторения' },
-                { value: 'daily', label: 'Ежедневно' },
-                { value: 'weekly', label: 'Еженедельно' },
-                { value: 'biweekly', label: 'Раз в 2 нед.' },
-                { value: 'monthly', label: 'Ежемесячно' },
-                { value: 'yearly', label: 'Ежегодно' },
-              ]}
+              data={getRecurrenceSelectData(recurrence, true)}
               leftSection={<IconRepeat size={12} />}
               w={150}
             />

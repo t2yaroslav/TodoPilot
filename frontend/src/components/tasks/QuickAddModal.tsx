@@ -4,6 +4,7 @@ import { IconCalendar, IconRepeat } from '@tabler/icons-react';
 import { useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
+import { getRecurrenceSelectData } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -74,7 +75,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
           ]}
           w={180}
         />
-        <DatePickerMenu value={dueDate} onChange={setDueDate}>
+        <DatePickerMenu value={dueDate} onChange={setDueDate} onRecurrenceChange={setRecurrence}>
           <Button
             size="sm"
             variant="default"
@@ -88,14 +89,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
           placeholder="Повторение"
           value={recurrence || ''}
           onChange={(v) => setRecurrence(v || null)}
-          data={[
-            { value: '', label: 'Без повторения' },
-            { value: 'daily', label: 'Ежедневно' },
-            { value: 'weekly', label: 'Еженедельно' },
-            { value: 'biweekly', label: 'Раз в 2 недели' },
-            { value: 'monthly', label: 'Ежемесячно' },
-            { value: 'yearly', label: 'Ежегодно' },
-          ]}
+          data={getRecurrenceSelectData(recurrence)}
           leftSection={<IconRepeat size={14} />}
           w={170}
         />

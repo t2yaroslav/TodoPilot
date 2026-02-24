@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Menu, Text, Group, Divider, Box } from '@mantine/core';
+import { useState, useRef, useEffect } from 'react';
+import { Menu, Text, Group, Divider, Box, TextInput } from '@mantine/core';
 import { DatePicker } from '@mantine/dates';
 import {
   IconSun,
@@ -8,15 +8,21 @@ import {
   IconArrowForwardUp,
   IconCalendarOff,
   IconCalendar,
+  IconCalendarDue,
+  IconRepeat,
+  IconCommand,
 } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
+import { parseDateInput } from '@/lib/dateParser';
+import { getRecurrenceLabel } from '@/lib/recurrence';
 
 dayjs.locale('ru');
 
 interface Props {
   value: Date | null;
   onChange: (date: Date | null) => void;
+  onRecurrenceChange?: (recurrence: string | null) => void;
   children: React.ReactNode;
   withinPortal?: boolean;
 }
@@ -37,11 +43,18 @@ interface QuickOption {
 }
 
 function getQuickOptions(): QuickOption[] {
-  const tomorrow = dayjs().add(1, 'day');
   const today = dayjs();
+  const tomorrow = dayjs().add(1, 'day');
   const dayOfWeek = today.day(); // 0=Sun, 1=Mon, ...
 
   const options: QuickOption[] = [
+    {
+      label: 'Сегодня',
+      sublabel: today.format('dd'),
+      icon: <IconCalendarDue size={18} />,
+      getDate: () => today.toDate(),
+      color: 'var(--mantine-color-green-6)',
+    },
     {
       label: 'Завтра',
       sublabel: tomorrow.format('dd'),
@@ -89,13 +102,51 @@ function getQuickOptions(): QuickOption[] {
   return options;
 }
 
-export function DatePickerMenu({ value, onChange, children, withinPortal = true }: Props) {
+export function DatePickerMenu({ value, onChange, onRecurrenceChange, children, withinPortal = true }: Props) {
   const [opened, setOpened] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [parsePreview, setParsePreview] = useState<ReturnType<typeof parseDateInput>>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const quickOptions = getQuickOptions();
 
-  const handleSelect = (date: Date | null) => {
+  useEffect(() => {
+    if (opened) {
+      // Focus the input after menu opens
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } else {
+      setInputValue('');
+      setParsePreview(null);
+    }
+  }, [opened]);
+
+  const handleSelect = (date: Date | null, recurrence?: string | null) => {
     onChange(date);
+    if (recurrence !== undefined && onRecurrenceChange) {
+      onRecurrenceChange(recurrence);
+    }
     setOpened(false);
+  };
+
+  const handleInputChange = (val: string) => {
+    setInputValue(val);
+    const result = parseDateInput(val);
+    setParsePreview(result);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && parsePreview) {
+      e.preventDefault();
+      handleSelect(parsePreview.date, parsePreview.recurrence);
+    }
+    if (e.key === 'Escape') {
+      setOpened(false);
+    }
+  };
+
+  const handleApplyParsed = () => {
+    if (parsePreview) {
+      handleSelect(parsePreview.date, parsePreview.recurrence);
+    }
   };
 
   return (
@@ -114,6 +165,65 @@ export function DatePickerMenu({ value, onChange, children, withinPortal = true 
         </Box>
       </Menu.Target>
       <Menu.Dropdown>
+        {/* ── Quick date input ── */}
+        <Box px="xs" pt="xs" pb={4}>
+          <TextInput
+            ref={inputRef}
+            placeholder="Напр: завтра, каждый пн и ср"
+            size="xs"
+            value={inputValue}
+            onChange={(e) => handleInputChange(e.currentTarget.value)}
+            onKeyDown={handleInputKeyDown}
+            leftSection={<IconCommand size={14} />}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Box>
+
+        {/* ── Parse preview ── */}
+        {parsePreview && (
+          <Box
+            px="xs"
+            pb={4}
+            onClick={(e) => { e.stopPropagation(); handleApplyParsed(); }}
+            style={{ cursor: 'pointer' }}
+          >
+            <Group
+              gap={6}
+              px="xs"
+              py={6}
+              style={{
+                borderRadius: 6,
+                background: 'var(--mantine-color-blue-light)',
+              }}
+            >
+              {parsePreview.recurrence ? (
+                <IconRepeat size={14} color="var(--mantine-color-blue-6)" />
+              ) : (
+                <IconCalendar size={14} color="var(--mantine-color-blue-6)" />
+              )}
+              <Box style={{ flex: 1 }}>
+                <Text size="xs" fw={500} c="blue">
+                  {parsePreview.label}
+                </Text>
+                {parsePreview.date && (
+                  <Text size="xs" c="dimmed">
+                    {dayjs(parsePreview.date).format('D MMM, dd')}
+                  </Text>
+                )}
+                {parsePreview.recurrence && (
+                  <Text size="xs" c="dimmed">
+                    {getRecurrenceLabel(parsePreview.recurrence)}
+                  </Text>
+                )}
+              </Box>
+              <Text size="xs" c="dimmed">Enter</Text>
+            </Group>
+          </Box>
+        )}
+
+        <Divider />
+
+        {/* ── Quick options ── */}
         {quickOptions.map((opt) => (
           <Menu.Item
             key={opt.label}
@@ -126,7 +236,7 @@ export function DatePickerMenu({ value, onChange, children, withinPortal = true 
         ))}
         <Menu.Item
           leftSection={<span style={{ color: 'var(--mantine-color-gray-5)' }}><IconCalendarOff size={18} /></span>}
-          onClick={() => handleSelect(null)}
+          onClick={() => handleSelect(null, null)}
         >
           Без срока
         </Menu.Item>
