@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Stack, Text, TextInput, Group, Button, ActionIcon, Select, Box } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import { IconPlus } from '@tabler/icons-react';
+import { IconPlus, IconCalendar } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
+import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ru';
+
+dayjs.locale('ru');
 
 interface Props {
   filterParams?: Record<string, unknown>;
@@ -55,7 +59,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
   return (
     <Stack gap={0}>
       {activeTasks.map((task) => (
-        <TaskItem key={task.id} task={task} onEdit={setEditingTask} />
+        <TaskItem key={task.id} task={task} onEdit={setEditingTask} filterParams={filterParams} />
       ))}
 
       {showAddButton && !adding && (
@@ -95,15 +99,15 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
               ]}
               w={160}
             />
-            <DatePickerInput
-              size="xs"
-              placeholder="Дата"
-              value={dueDate}
-              onChange={setDueDate}
-              clearable
-              w={130}
-              valueFormat="D MMM YYYY"
-            />
+            <DatePickerMenu value={dueDate} onChange={setDueDate}>
+              <Button
+                size="xs"
+                variant="default"
+                leftSection={<IconCalendar size={14} />}
+              >
+                {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
+              </Button>
+            </DatePickerMenu>
             {projects.length > 0 && (
               <Select
                 size="xs"
@@ -127,7 +131,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
             Завершено ({completedTasks.length})
           </Text>
           {completedTasks.map((task) => (
-            <TaskItem key={task.id} task={task} onEdit={setEditingTask} />
+            <TaskItem key={task.id} task={task} onEdit={setEditingTask} filterParams={filterParams} />
           ))}
         </>
       )}
