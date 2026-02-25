@@ -53,15 +53,18 @@ interface Props {
   task: Task;
   onEdit?: (task: Task) => void;
   filterParams?: Record<string, unknown>;
+  isTodayPage?: boolean;
 }
 
-export function TaskItem({ task, onEdit, filterParams }: Props) {
+export function TaskItem({ task, onEdit, filterParams, isTodayPage }: Props) {
   const { toggleTask, removeTask, editTask, fetchTasks, refreshAllCounts } = useTaskStore();
   const { projects } = useTaskStore();
   const project = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
   const [hovered, setHovered] = useState(false);
 
   const dateColor = task.due_date ? getDateColor(task.due_date) : undefined;
+
+  const isToday = task.due_date && dayjs(task.due_date).isSame(dayjs(), 'day');
 
   const handleDateChange = (date: Date | null) => {
     editTask(task.id, { due_date: date ? toNoonUTC(date) : null }).then(() => {
@@ -118,7 +121,7 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
           )}
           {(task.due_date || task.recurrence || project) && (
             <Group gap="xs" mt={4} onClick={(e) => e.stopPropagation()}>
-              {task.due_date && (
+              {task.due_date && !(isTodayPage && isToday) && (
                 <DatePickerMenu
                   value={new Date(task.due_date)}
                   onChange={handleDateChange}

@@ -87,6 +87,8 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
       addingForPriority === g.priority,
   );
 
+  const isTodayPage = Boolean(defaultDueDate);
+
   return (
     <Stack gap={0}>
       {visibleGroups.map((group) => {
@@ -119,6 +121,7 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
                 task={task}
                 onEdit={setEditingTask}
                 filterParams={filterParams}
+                isTodayPage={isTodayPage}
               />
             ))}
 
