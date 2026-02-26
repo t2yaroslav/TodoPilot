@@ -34,6 +34,7 @@ import {
   IconEdit,
   IconTrash,
   IconTarget,
+  IconClipboardList,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore, Project } from '@/stores/taskStore';
@@ -127,6 +128,7 @@ const NAV_ITEMS = [
   { label: 'Сегодня', icon: IconCalendarEvent, path: '/today', countKey: 'today' as const },
   { label: 'Предстоящие', icon: IconCalendarWeek, path: '/upcoming', countKey: null },
   { label: 'Выполнено', icon: IconCircleCheck, path: '/completed', countKey: 'completed' as const },
+  { label: 'Ретроспективы', icon: IconClipboardList, path: '/retrospectives', countKey: null },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
