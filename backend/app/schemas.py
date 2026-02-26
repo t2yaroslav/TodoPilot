@@ -190,3 +190,43 @@ class BrainDumpResponse(BaseModel):
 
 class BrainDumpSaveRequest(BaseModel):
     items: list[BrainDumpItem]
+
+
+# Weekly Survey
+class SurveyStatusOut(BaseModel):
+    should_show: bool
+    survey_id: UUID | None = None
+    already_completed: bool = False
+    already_dismissed: bool = False
+
+
+class SurveyGenerateRequest(BaseModel):
+    step: int  # 1-4
+    achievements: list[str] | None = None  # answers from step 1 (for steps 3-4)
+    difficulties: list[str] | None = None  # answers from step 2 (for steps 3-4)
+    improvements: list[str] | None = None  # answers from step 3 (for step 4)
+
+
+class SurveyGenerateResponse(BaseModel):
+    suggestions: list[str]
+
+
+class SurveySubmitRequest(BaseModel):
+    achievements: list[str]
+    difficulties: list[str]
+    improvements: list[str]
+    weekly_goals: list[str]
+
+
+class SurveyOut(BaseModel):
+    id: UUID
+    week_start: datetime
+    achievements: list[str] | None
+    difficulties: list[str] | None
+    improvements: list[str] | None
+    weekly_goals: list[str] | None
+    dismissed: bool
+    completed: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
