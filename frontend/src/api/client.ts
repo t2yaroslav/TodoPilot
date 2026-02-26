@@ -110,3 +110,20 @@ export const aiChat = (message: string) => api.post('/ai/chat', { message });
 export const aiProductivity = () => api.get('/ai/productivity-analysis');
 export const aiRetrospective = () => api.get('/ai/retrospective');
 export const aiOnboarding = (message: string) => api.post('/ai/onboarding', { message });
+
+// Weekly Survey
+export const getSurveyStatus = () => api.get('/survey/status');
+export const dismissSurvey = () => api.post('/survey/dismiss');
+export const generateSurveyStep = (data: {
+  step: number;
+  achievements?: string[];
+  difficulties?: string[];
+  improvements?: string[];
+}) => api.post('/survey/generate', data);
+export const submitSurvey = (data: {
+  achievements: string[];
+  difficulties: string[];
+  improvements: string[];
+  weekly_goals: string[];
+}) => api.post('/survey/submit', data);
+export const getSurveyResults = () => api.get('/survey/results');

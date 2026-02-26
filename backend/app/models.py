@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -23,6 +23,7 @@ class User(Base):
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
+    weekly_surveys = relationship("WeeklySurvey", back_populates="user", cascade="all, delete-orphan")
 
 
 class AuthCode(Base):
@@ -92,3 +93,23 @@ class Task(Base):
     project = relationship("Project", back_populates="tasks")
     goal = relationship("Goal", back_populates="tasks")
     subtasks = relationship("Task", backref="parent_task", remote_side="Task.id", foreign_keys=[parent_task_id])
+
+
+class WeeklySurvey(Base):
+    __tablename__ = "weekly_surveys"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    week_start: Mapped[datetime] = mapped_column(Date, nullable=False, index=True)  # Monday of the week
+    achievements: Mapped[list | None] = mapped_column(JSONB)  # list of strings
+    difficulties: Mapped[list | None] = mapped_column(JSONB)  # list of strings
+    improvements: Mapped[list | None] = mapped_column(JSONB)  # list of strings
+    weekly_goals: Mapped[list | None] = mapped_column(JSONB)  # list of strings
+    dismissed: Mapped[bool] = mapped_column(Boolean, default=False)  # user declined the survey
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)  # user finished the wizard
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user = relationship("User", back_populates="weekly_surveys")

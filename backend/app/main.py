@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .database import engine
 from .models import Base
-from .routers import ai, auth, goals, projects, stats, tasks
+from .routers import ai, auth, goals, projects, stats, survey, tasks
 
 DEV_MODE = os.getenv("FASTAPI_ENV", "development") != "production"
 
@@ -106,6 +106,7 @@ app.include_router(projects.router, prefix="/api")
 app.include_router(goals.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
+app.include_router(survey.router, prefix="/api")
 
 
 @app.get("/api/health")

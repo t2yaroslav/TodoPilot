@@ -103,6 +103,86 @@ async def weekly_retrospective(
         return {"achievements": [], "difficulties": [], "improvements": [], "weekly_goals": [], "raw": result}
 
 
+async def generate_survey_step(
+    step: int,
+    week_tasks: list[dict],
+    goals: list[dict],
+    user_profile: str | None = None,
+    previous_answers: dict | None = None,
+) -> list[str]:
+    """Generate AI suggestions for a specific survey wizard step."""
+    import json
+
+    tasks_text = "\n".join(
+        f"- {'[x]' if t.get('completed') else '[ ]'} {t['title']}"
+        + (f" (проект: {t.get('project_title', '')})" if t.get('project_title') else "")
+        for t in week_tasks
+    )
+    goals_text = "\n".join(f"- {g['title']}" for g in goals) if goals else "Цели не заданы"
+
+    context = f"Задачи за прошлую неделю:\n{tasks_text}\n\nЦели пользователя:\n{goals_text}"
+
+    if step == 1:
+        prompt = (
+            f"{context}\n\n"
+            "На основе выполненных задач за неделю, составь список из 3-5 ключевых достижений пользователя. "
+            "Формулируй кратко и конкретно. Верни JSON-массив строк. Только JSON, без markdown."
+        )
+    elif step == 2:
+        prompt = (
+            f"{context}\n\n"
+            "На основе невыполненных задач и общего контекста, предположи 2-4 трудности, "
+            "с которыми пользователь мог столкнуться на этой неделе. "
+            "Формулируй как наблюдения, а не обвинения. Верни JSON-массив строк. Только JSON, без markdown."
+        )
+    elif step == 3:
+        prev = previous_answers or {}
+        achievements = prev.get("achievements", [])
+        difficulties = prev.get("difficulties", [])
+        prompt = (
+            f"{context}\n\n"
+            f"Достижения пользователя: {json.dumps(achievements, ensure_ascii=False)}\n"
+            f"Трудности пользователя: {json.dumps(difficulties, ensure_ascii=False)}\n\n"
+            "На основе психопортрета, достижений и трудностей, предложи 3-5 конкретных действий, "
+            "которые можно предпринять на этой неделе для улучшения продуктивности и достижения целей. "
+            "Верни JSON-массив строк. Только JSON, без markdown."
+        )
+    else:  # step 4
+        prev = previous_answers or {}
+        achievements = prev.get("achievements", [])
+        difficulties = prev.get("difficulties", [])
+        improvements = prev.get("improvements", [])
+        prompt = (
+            f"{context}\n\n"
+            f"Достижения: {json.dumps(achievements, ensure_ascii=False)}\n"
+            f"Трудности: {json.dumps(difficulties, ensure_ascii=False)}\n"
+            f"Планируемые изменения: {json.dumps(improvements, ensure_ascii=False)}\n\n"
+            "На основе всего контекста, предложи 3-5 конкретных целей на эту неделю. "
+            "Цели должны быть достижимыми и связанными с долгосрочными целями пользователя. "
+            "Верни JSON-массив строк. Только JSON, без markdown."
+        )
+
+    messages = [{"role": "user", "content": prompt}]
+    result = await chat(messages, user_profile=user_profile)
+
+    try:
+        parsed = json.loads(result)
+        if isinstance(parsed, list):
+            return [str(item) for item in parsed]
+        return []
+    except json.JSONDecodeError:
+        # Try to extract JSON array from response
+        import re
+        match = re.search(r'\[.*\]', result, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group())
+                return [str(item) for item in parsed]
+            except json.JSONDecodeError:
+                pass
+        return []
+
+
 async def onboarding_chat(message: str, history: list[dict]) -> str:
     messages = history + [{"role": "user", "content": message}]
     system_override = (
