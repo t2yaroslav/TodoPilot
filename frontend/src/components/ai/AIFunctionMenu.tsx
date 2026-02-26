@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Menu, ActionIcon } from '@mantine/core';
-import { IconSparkles, IconChartBar, IconBrain, IconSunrise, IconMessageChatbot } from '@tabler/icons-react';
+import { IconSparkles, IconChartBar, IconBrain, IconSunrise, IconMessageChatbot, IconClipboardList } from '@tabler/icons-react';
 import { AnalysisModal } from './AnalysisModal';
 import { BrainDumpModal } from './BrainDumpModal';
 import { MorningPlanModal } from './MorningPlanModal';
 import { SmartChatModal } from './SmartChatModal';
+import { useSurveyStore } from '@/stores/surveyStore';
 
 export function AIFunctionMenu() {
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [brainDumpOpen, setBrainDumpOpen] = useState(false);
   const [morningPlanOpen, setMorningPlanOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const openWizard = useSurveyStore((s) => s.openWizard);
 
   return (
     <>
@@ -40,6 +42,12 @@ export function AIFunctionMenu() {
             onClick={() => setMorningPlanOpen(true)}
           >
             Утренний план
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconClipboardList size={16} />}
+            onClick={openWizard}
+          >
+            Ретроспектива
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item
