@@ -13,6 +13,11 @@ from ..config import settings
 
 litellm.drop_params = True
 
+if settings.llm_debug:
+    from .llm_logger import LLMDebugLogger
+
+    litellm.callbacks = [LLMDebugLogger()]
+
 SYSTEM_PROMPT = """Ты — AI-помощник в приложении TodoPilot для управления задачами.
 Твоя роль: помогать пользователю с продуктивностью, мотивацией и целеполаганием.
 
