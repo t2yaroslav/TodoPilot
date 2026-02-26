@@ -16,7 +16,6 @@ import {
   Select,
   ColorInput,
   Box,
-  SimpleGrid,
   ThemeIcon,
   RingProgress,
   Collapse,
@@ -29,12 +28,9 @@ import {
   IconEdit,
   IconTrash,
   IconTarget,
-  IconFolder,
-  IconSubtask,
   IconChevronDown,
   IconChevronRight,
   IconLink,
-  IconCircleCheck,
   IconTrophy,
 } from '@tabler/icons-react';
 import { useTaskStore, Goal, GoalStats, Task, Project } from '@/stores/taskStore';
@@ -292,9 +288,11 @@ function GoalCard({
       </Group>
 
       {/* Progress section */}
-      <Box mb="sm">
+      <Box mb="xs">
         <Group justify="space-between" mb={4}>
-          <Text size="xs" c="dimmed">Прогресс</Text>
+          <Group gap="xs">
+            <Text size="xs" c="dimmed">Задачи: {stats.completed_tasks}/{stats.total_tasks}</Text>
+          </Group>
           <Text size="xs" fw={600} c={progress === 100 ? 'green' : undefined}>
             {progress}%
           </Text>
@@ -306,37 +304,6 @@ function GoalCard({
           radius="xl"
         />
       </Box>
-
-      {/* Stats grid */}
-      <SimpleGrid cols={3} spacing="xs" mb="sm">
-        <Paper p="xs" radius="sm" bg="var(--mantine-color-default-hover)">
-          <Group gap={6}>
-            <IconSubtask size={14} color="var(--mantine-color-dimmed)" />
-            <div>
-              <Text size="xs" c="dimmed">Задачи</Text>
-              <Text size="sm" fw={600}>{stats.completed_tasks}/{stats.total_tasks}</Text>
-            </div>
-          </Group>
-        </Paper>
-        <Paper p="xs" radius="sm" bg="var(--mantine-color-default-hover)">
-          <Group gap={6}>
-            <IconFolder size={14} color="var(--mantine-color-dimmed)" />
-            <div>
-              <Text size="xs" c="dimmed">Проекты</Text>
-              <Text size="sm" fw={600}>{stats.projects}</Text>
-            </div>
-          </Group>
-        </Paper>
-        <Paper p="xs" radius="sm" bg="var(--mantine-color-default-hover)">
-          <Group gap={6}>
-            <IconCircleCheck size={14} color="var(--mantine-color-dimmed)" />
-            <div>
-              <Text size="xs" c="dimmed">Выполнено</Text>
-              <Text size="sm" fw={600}>{stats.completed_tasks}</Text>
-            </div>
-          </Group>
-        </Paper>
-      </SimpleGrid>
 
       {/* Linked projects */}
       {linkedProjects.length > 0 && (
@@ -530,39 +497,23 @@ export function GoalsPage() {
 
       {/* Overall summary */}
       {goals.length > 0 && (
-        <Paper p="md" radius="md" withBorder>
-          <Group justify="space-between" align="center">
-            <Group gap="lg">
-              <RingProgress
-                size={80}
-                thickness={8}
-                roundCaps
-                sections={[{ value: overallProgress, color: 'indigo' }]}
-                label={
-                  <Text ta="center" size="xs" fw={700}>{overallProgress}%</Text>
-                }
-              />
-              <div>
-                <Text fw={600}>Общий прогресс</Text>
-                <Text size="sm" c="dimmed">
-                  {completedTasks} из {totalTasks} задач выполнено по всем целям
-                </Text>
-              </div>
-            </Group>
-            <Group gap="lg">
-              <div style={{ textAlign: 'center' }}>
-                <Text size="xl" fw={700} c="indigo">{goals.length}</Text>
-                <Text size="xs" c="dimmed">Целей</Text>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <Text size="xl" fw={700} c="green">{completedTasks}</Text>
-                <Text size="xs" c="dimmed">Выполнено</Text>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <Text size="xl" fw={700} c="orange">{totalTasks - completedTasks}</Text>
-                <Text size="xs" c="dimmed">Осталось</Text>
-              </div>
-            </Group>
+        <Paper p="sm" radius="md" withBorder>
+          <Group gap="md">
+            <RingProgress
+              size={56}
+              thickness={6}
+              roundCaps
+              sections={[{ value: overallProgress, color: 'indigo' }]}
+              label={
+                <Text ta="center" size="xs" fw={700}>{overallProgress}%</Text>
+              }
+            />
+            <div>
+              <Text size="sm" fw={600}>Общий прогресс</Text>
+              <Text size="xs" c="dimmed">
+                {completedTasks} из {totalTasks} задач выполнено
+              </Text>
+            </div>
           </Group>
         </Paper>
       )}
