@@ -110,6 +110,14 @@ export const aiChat = (message: string) => api.post('/ai/chat', { message });
 export const aiProductivity = () => api.get('/ai/productivity-analysis');
 export const aiRetrospective = () => api.get('/ai/retrospective');
 export const aiOnboarding = (message: string) => api.post('/ai/onboarding', { message });
+export const aiAnalysis = () => api.post('/ai/analysis');
+export const aiBrainDump = (text: string) => api.post('/ai/brain-dump', { text });
+export const aiBrainDumpSave = (items: Record<string, unknown>[]) => api.post('/ai/brain-dump/save', { items });
+export const aiMorningPlan = () => api.post('/ai/morning-plan');
+export const aiSmartChat = (message: string, history: Record<string, unknown>[] = []) =>
+  api.post('/ai/smart-chat', { message, history });
+export const aiExecuteAction = (action: Record<string, unknown>) =>
+  api.post('/ai/smart-chat/execute-action', action);
 
 // Weekly Survey
 export const getSurveyStatus = () => api.get('/survey/status');

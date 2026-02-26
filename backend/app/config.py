@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_api_key: str = ""
     llm_api_base: str = ""
+    llm_debug: bool = False
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

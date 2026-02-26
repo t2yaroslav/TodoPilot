@@ -1,15 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Group, Title, ActionIcon, ColorSwatch } from '@mantine/core';
-import { IconSparkles } from '@tabler/icons-react';
+import { Group, Title, ColorSwatch } from '@mantine/core';
 import { useTaskStore } from '@/stores/taskStore';
 import { TaskList } from '@/components/tasks/TaskList';
-import { AIModal } from '@/components/ai/AIModal';
+import { AIFunctionMenu } from '@/components/ai/AIFunctionMenu';
 
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>();
   const { projects, fetchProjects } = useTaskStore();
-  const [aiOpen, setAiOpen] = useState(false);
   const project = projects.find((p) => p.id === id);
 
   useEffect(() => {
@@ -23,12 +21,9 @@ export function ProjectPage() {
           {project && <ColorSwatch color={project.color} size={16} />}
           <Title order={3}>{project?.title || 'Проект'}</Title>
         </Group>
-        <ActionIcon variant="light" color="indigo" size="lg" onClick={() => setAiOpen(true)}>
-          <IconSparkles size={20} />
-        </ActionIcon>
+        <AIFunctionMenu />
       </Group>
       {id && <TaskList filterParams={{ project_id: id, completed: false }} />}
-      <AIModal opened={aiOpen} onClose={() => setAiOpen(false)} />
     </>
   );
 }

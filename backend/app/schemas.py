@@ -148,6 +148,50 @@ class AIResponse(BaseModel):
     suggestions: list[dict] | None = None
 
 
+# AI Chat with actions
+class AIChatMessage(BaseModel):
+    message: str
+    history: list[dict] = []
+
+
+class TaskAction(BaseModel):
+    action: str  # "create", "complete", "move"
+    task_id: str | None = None
+    title: str | None = None
+    project_id: str | None = None
+    goal_id: str | None = None
+    priority: int | None = None
+    due_date: str | None = None
+
+
+class AIChatResponse(BaseModel):
+    reply: str
+    actions: list[TaskAction] = []
+
+
+# Brain dump
+class BrainDumpRequest(BaseModel):
+    text: str
+
+
+class BrainDumpItem(BaseModel):
+    type: str  # "task", "project", "goal"
+    title: str
+    priority: int = 0
+    due_date: str | None = None
+    project: str | None = None
+    goal: str | None = None
+
+
+class BrainDumpResponse(BaseModel):
+    reply: str
+    items: list[BrainDumpItem] = []
+
+
+class BrainDumpSaveRequest(BaseModel):
+    items: list[BrainDumpItem]
+
+
 # Weekly Survey
 class SurveyStatusOut(BaseModel):
     should_show: bool

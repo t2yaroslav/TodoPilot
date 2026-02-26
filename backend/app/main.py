@@ -1,3 +1,4 @@
+import logging
 import os
 import traceback
 from contextlib import asynccontextmanager
@@ -9,11 +10,20 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from .config import settings
 from .database import engine
 from .models import Base
 from .routers import ai, auth, goals, projects, stats, survey, tasks
 
 DEV_MODE = os.getenv("FASTAPI_ENV", "development") != "production"
+
+# LLM debug logging — activate with LLM_DEBUG=true in .env
+if settings.llm_debug:
+    _llm_logger = logging.getLogger("todopilot.llm")
+    _llm_logger.setLevel(logging.DEBUG)
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s %(message)s", datefmt="%H:%M:%S"))
+    _llm_logger.addHandler(_handler)
 
 
 def _build_error_detail(request: Request, exc: Exception) -> dict:
