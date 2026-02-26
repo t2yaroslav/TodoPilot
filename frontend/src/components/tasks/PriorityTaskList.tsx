@@ -77,32 +77,62 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
 
   const activeTasks = tasks.filter((t) => !t.completed);
 
+  const hidePriorityHeaders =
+    activeTasks.length > 0 &&
+    activeTasks.every((t) => t.priority === 0);
+
   const visibleGroups = PRIORITY_GROUPS.filter(
-    (g) => activeTasks.some((t) => t.priority === g.priority) || addingForPriority === g.priority,
+    (g) =>
+      activeTasks.some((t) => t.priority === g.priority) ||
+      addingForPriority === g.priority,
   );
+
+  const isTodayPage = Boolean(defaultDueDate);
 
   return (
     <Stack gap={0}>
       {visibleGroups.map((group) => {
-        const groupTasks = activeTasks.filter((t) => t.priority === group.priority);
+        const groupTasks = activeTasks.filter(
+          (t) => t.priority === group.priority,
+        );
 
         return (
           <Box key={group.priority} mb="xs">
-            <Group gap={6} px="sm" py={6}>
-              {group.emoji ? (
-                <Text size="xs" lh={1}>{group.emoji}</Text>
-              ) : (
-                <IconCircleFilled size={10} color={group.color} style={{ opacity: 0.5 }} />
-              )}
-              <Text size="sm" fw={600}>
-                {group.label}
-              </Text>
-            </Group>
+            {!(hidePriorityHeaders && group.priority === 0) && (
+              <Group gap={6} px="sm" py={6}>
+                {group.emoji ? (
+                  <Text size="xs" lh={1}>{group.emoji}</Text>
+                ) : (
+                  <IconCircleFilled
+                    size={10}
+                    color={group.color}
+                    style={{ opacity: 0.5 }}
+                  />
+                )}
+                <Text size="sm" fw={600}>
+                  {group.label}
+                </Text>
+              </Group>
+            )}
+
             {groupTasks.map((task) => (
-              <TaskItem key={task.id} task={task} onEdit={setEditingTask} filterParams={filterParams} />
+              <TaskItem
+                key={task.id}
+                task={task}
+                onEdit={setEditingTask}
+                filterParams={filterParams}
+                isTodayPage={isTodayPage}
+              />
             ))}
+
             {addingForPriority === group.priority ? (
-              <Box px="sm" py="xs" style={{ borderBottom: '1px solid var(--mantine-color-default-border)' }}>
+              <Box
+                px="sm"
+                py="xs"
+                style={{
+                  borderBottom: '1px solid var(--mantine-color-default-border)',
+                }}
+              >
                 <TextInput
                   placeholder="Название задачи"
                   value={title}
@@ -122,18 +152,28 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
                     data={PRIORITY_OPTIONS}
                     w={160}
                   />
-                  <DatePickerMenu value={dueDate} onChange={setDueDate} onRecurrenceChange={setRecurrence}>
-                    <Button size="xs" variant="default" leftSection={<IconCalendar size={14} />}>
+
+                  <DatePickerMenu
+                    value={dueDate}
+                    onChange={setDueDate}
+                    onRecurrenceChange={setRecurrence}
+                  >
+                    <Button
+                      size="xs"
+                      variant="default"
+                      leftSection={<IconCalendar size={14}/>}
+                    >
                       {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
                     </Button>
                   </DatePickerMenu>
+
                   <Select
                     size="xs"
                     placeholder="Повторение"
                     value={recurrence || ''}
                     onChange={(v) => setRecurrence(v || null)}
                     data={getRecurrenceSelectData(recurrence, true)}
-                    leftSection={<IconRepeat size={12} />}
+                    leftSection={<IconRepeat size={12}/>}
                     w={150}
                   />
                   {projects.length > 0 && (
@@ -142,13 +182,26 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
                       placeholder="Проект"
                       value={projectId}
                       onChange={setProjectId}
-                      data={projects.map((p) => ({ value: p.id, label: p.title }))}
+                      data={projects.map((p) => ({
+                        value: p.id,
+                        label: p.title,
+                      }))}
                       clearable
                       w={140}
                     />
                   )}
-                  <Button size="xs" onClick={handleAdd}>Добавить</Button>
-                  <Button size="xs" variant="subtle" onClick={() => setAddingForPriority(null)}>Отмена</Button>
+
+                  <Button size="xs" onClick={handleAdd}>
+                    Добавить
+                  </Button>
+
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    onClick={() => setAddingForPriority(null)}
+                  >
+                    Отмена
+                  </Button>
                 </Group>
               </Box>
             ) : (
@@ -159,7 +212,7 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
                 style={{ cursor: 'pointer', opacity: 0.5 }}
                 onClick={() => handleStartAdding(group.priority)}
               >
-                <IconPlus size={14} />
+                <IconPlus size={14}/>
                 <Text size="xs">Добавить задачу</Text>
               </Group>
             )}
@@ -169,11 +222,13 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
 
       {!loading && activeTasks.length === 0 && addingForPriority === null && (
         <Box ta="center" py="xl">
-          <Text size="sm" c="dimmed" mb="sm">Нет задач на сегодня</Text>
+          <Text size="sm" c="dimmed" mb="sm">
+            Нет задач на сегодня
+          </Text>
           <Button
             variant="subtle"
             size="xs"
-            leftSection={<IconPlus size={14} />}
+            leftSection={<IconPlus size={14}/>}
             onClick={() => handleStartAdding(0)}
           >
             Добавить задачу
@@ -181,7 +236,11 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
         </Box>
       )}
 
-      <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} filterParams={filterParams} />
+      <TaskEditModal
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        filterParams={filterParams}
+      />
     </Stack>
   );
 }

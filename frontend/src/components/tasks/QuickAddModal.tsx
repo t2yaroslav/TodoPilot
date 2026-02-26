@@ -124,7 +124,7 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
       </Group>
       <Group justify="flex-end">
         <Button variant="subtle" onClick={onClose}>Отмена</Button>
-        <Button onClick={handleAdd}>Добавить</Button>
+        <Button onClick={handleAdd}>Сохранить</Button>
       </Group>
     </Modal>
   );

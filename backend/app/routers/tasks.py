@@ -83,7 +83,7 @@ async def task_counts(user: User = Depends(get_current_user), db: AsyncSession =
         Task.parent_task_id == None,  # noqa: E711
     )
 
-    today_q = base.where(cast(Task.due_date, Date) == today)
+    today_q = base.where(cast(Task.due_date, Date) <= today)
     inbox_q = base.where(Task.project_id == None, Task.goal_id == None)  # noqa: E711
     completed_q = select(func.count(Task.id)).where(
         Task.user_id == user.id,
@@ -119,7 +119,7 @@ async def list_tasks(
     if completed is not None:
         q = q.where(Task.completed == completed)
     if due_today:
-        q = q.where(cast(Task.due_date, Date) == today)
+        q = q.where(cast(Task.due_date, Date) <= today)
     elif upcoming:
         q = q.where(cast(Task.due_date, Date) > today)
     elif inbox:

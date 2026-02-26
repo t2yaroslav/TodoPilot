@@ -133,7 +133,7 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
                 w={140}
               />
             )}
-            <Button size="xs" onClick={handleAdd}>Добавить</Button>
+            <Button size="xs" onClick={handleAdd}>Сохранить</Button>
             <Button size="xs" variant="subtle" onClick={() => setAdding(false)}>Отмена</Button>
           </Group>
         </Box>
