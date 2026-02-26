@@ -1,16 +1,12 @@
-import { useState } from 'react';
-import { Group, Title, Text, ActionIcon } from '@mantine/core';
-import { IconSparkles } from '@tabler/icons-react';
+import { Group, Title, Text } from '@mantine/core';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 import { PriorityTaskList } from '@/components/tasks/PriorityTaskList';
-import { AIModal } from '@/components/ai/AIModal';
+import { AIFunctionMenu } from '@/components/ai/AIFunctionMenu';
 
 dayjs.locale('ru');
 
 export function TodayPage() {
-  const [aiOpen, setAiOpen] = useState(false);
-
   return (
     <>
       <Group justify="space-between" mb="md">
@@ -18,12 +14,9 @@ export function TodayPage() {
           <Title order={3}>Сегодня</Title>
           <Text size="sm" c="dimmed">{dayjs().format('dd, D MMMM')}</Text>
         </div>
-        <ActionIcon variant="light" color="indigo" size="lg" onClick={() => setAiOpen(true)} title="AI-помощник">
-          <IconSparkles size={20} />
-        </ActionIcon>
+        <AIFunctionMenu />
       </Group>
       <PriorityTaskList filterParams={{ due_today: true, completed: false }} defaultDueDate={new Date()} />
-      <AIModal opened={aiOpen} onClose={() => setAiOpen(false)} />
     </>
   );
 }
