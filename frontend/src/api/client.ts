@@ -75,6 +75,32 @@ api.interceptors.response.use(
 
 export default api;
 
+/**
+ * Poll a background AI task until it completes.
+ * All AI endpoints now return { task_id } immediately.
+ * This helper polls GET /ai-tasks/{task_id} until status is "done" or "error".
+ */
+export async function pollAITask<T = unknown>(taskId: string, intervalMs = 2000): Promise<T> {
+  while (true) {
+    const { data } = await api.get(`/ai-tasks/${taskId}`);
+    if (data.status === 'done') return data.result as T;
+    if (data.status === 'error') throw new Error(data.error || 'AI task failed');
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
+/**
+ * Submit an AI request and poll for the result.
+ * Wraps the pattern: POST → get task_id → poll until done.
+ */
+export async function submitAndPoll<T = unknown>(
+  requestFn: () => Promise<{ data: { task_id: string } }>,
+  intervalMs = 2000,
+): Promise<T> {
+  const { data } = await requestFn();
+  return pollAITask<T>(data.task_id, intervalMs);
+}
+
 // Auth
 export const sendCode = (email: string) => api.post('/auth/send-code', { email });
 export const verifyCode = (email: string, code: string) => api.post('/auth/verify', { email, code });

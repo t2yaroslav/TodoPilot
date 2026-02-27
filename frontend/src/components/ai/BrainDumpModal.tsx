@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Stack, Text, Paper, Textarea, Button, Group, Badge, Loader, Checkbox, ScrollArea, ActionIcon } from '@mantine/core';
 import { IconBrain, IconTrash } from '@tabler/icons-react';
-import { aiBrainDump, aiBrainDumpSave } from '@/api/client';
+import { aiBrainDump, aiBrainDumpSave, submitAndPoll } from '@/api/client';
 import { useTaskStore } from '@/stores/taskStore';
 
 interface Props {
@@ -54,9 +54,11 @@ export function BrainDumpModal({ opened, onClose }: Props) {
     if (!text.trim()) return;
     setLoading(true);
     try {
-      const { data } = await aiBrainDump(text.trim());
-      setItems(data.items.map((item: Omit<BrainDumpItem, 'selected'>) => ({ ...item, selected: true })));
-      setAiReply(data.reply);
+      const result = await submitAndPoll<{ reply: string; items: Omit<BrainDumpItem, 'selected'>[] }>(
+        () => aiBrainDump(text.trim()),
+      );
+      setItems(result.items.map((item) => ({ ...item, selected: true })));
+      setAiReply(result.reply);
       setStep('preview');
     } catch {
       setAiReply('Ошибка при обработке текста. Попробуйте ещё раз.');

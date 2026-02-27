@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Stack, Text, Paper, ScrollArea, Loader, Group, Button } from '@mantine/core';
 import { IconSunrise } from '@tabler/icons-react';
-import { aiMorningPlan } from '@/api/client';
+import { aiMorningPlan, submitAndPoll } from '@/api/client';
 
 interface Props {
   opened: boolean;
@@ -16,8 +16,8 @@ export function MorningPlanModal({ opened, onClose }: Props) {
     setLoading(true);
     setPlan(null);
     try {
-      const { data } = await aiMorningPlan();
-      setPlan(data.plan);
+      const result = await submitAndPoll<string>(() => aiMorningPlan());
+      setPlan(result);
     } catch {
       setPlan('Ошибка при генерации плана. Проверьте настройки AI.');
     } finally {

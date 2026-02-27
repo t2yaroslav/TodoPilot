@@ -15,6 +15,7 @@ from ..schemas import (
     SurveySubmitRequest,
 )
 from ..services import ai_service
+from ..services import task_queue
 from .auth import get_current_user
 
 router = APIRouter(prefix="/survey", tags=["survey"])
@@ -144,7 +145,7 @@ async def save_draft(
     return survey
 
 
-@router.post("/generate", response_model=SurveyGenerateResponse)
+@router.post("/generate")
 async def generate_suggestions(
     body: SurveyGenerateRequest,
     user: User = Depends(get_current_user),
@@ -156,7 +157,7 @@ async def generate_suggestions(
 
     monday = _current_week_monday()
 
-    # Fetch last week's tasks
+    # Fetch last week's tasks (fast DB query)
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     tasks_result = await db.execute(
         select(Task).where(
@@ -200,16 +201,18 @@ async def generate_suggestions(
     # Fetch previous retrospective for context
     previous_retrospective = await _get_previous_retrospective(user.id, monday, db)
 
-    suggestions = await ai_service.generate_survey_step(
-        step=body.step,
-        week_tasks=week_tasks,
-        goals=goals,
-        user_profile=user.profile_text,
-        previous_answers=previous_answers if previous_answers else None,
-        previous_retrospective=previous_retrospective,
+    # Submit LLM call to background queue (returns immediately)
+    task_id = await task_queue.submit(
+        ai_service.generate_survey_step(
+            step=body.step,
+            week_tasks=week_tasks,
+            goals=goals,
+            user_profile=user.profile_text,
+            previous_answers=previous_answers if previous_answers else None,
+            previous_retrospective=previous_retrospective,
+        )
     )
-
-    return SurveyGenerateResponse(suggestions=suggestions)
+    return {"task_id": task_id}
 
 
 @router.post("/submit", response_model=SurveyOut)
@@ -240,20 +243,32 @@ async def update_profile_from_survey(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update psychoportrait based on survey answers. Called separately in the background."""
-    new_profile = await ai_service.update_psychoportrait(
-        current_profile=user.profile_text,
-        survey_data={
-            "achievements": body.achievements,
-            "difficulties": body.difficulties,
-            "improvements": body.improvements,
-            "weekly_goals": body.weekly_goals,
-        },
-    )
-    if new_profile:
-        user.profile_text = new_profile
-        await db.commit()
-    return {"ok": True}
+    """Update psychoportrait based on survey answers. Called in the background."""
+    user_id = user.id
+    current_profile = user.profile_text
+    survey_data = {
+        "achievements": body.achievements,
+        "difficulties": body.difficulties,
+        "improvements": body.improvements,
+        "weekly_goals": body.weekly_goals,
+    }
+
+    async def _run():
+        from ..database import async_session
+        new_profile = await ai_service.update_psychoportrait(
+            current_profile=current_profile,
+            survey_data=survey_data,
+        )
+        if new_profile:
+            async with async_session() as session:
+                u = await session.get(User, user_id)
+                if u:
+                    u.profile_text = new_profile
+                    await session.commit()
+        return {"ok": True}
+
+    task_id = await task_queue.submit(_run())
+    return {"task_id": task_id}
 
 
 @router.get("/results", response_model=list[SurveyOut])

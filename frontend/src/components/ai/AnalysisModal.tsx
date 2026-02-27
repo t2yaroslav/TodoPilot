@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Stack, Text, Paper, ScrollArea, Loader, Group, Button, SimpleGrid, RingProgress, ThemeIcon } from '@mantine/core';
 import { IconChartBar, IconTarget, IconAlertTriangle, IconTrendingUp } from '@tabler/icons-react';
-import { aiAnalysis } from '@/api/client';
+import { aiAnalysis, submitAndPoll } from '@/api/client';
 
 interface Props {
   opened: boolean;
@@ -36,9 +36,9 @@ export function AnalysisModal({ opened, onClose }: Props) {
     setAnalysis(null);
     setStats(null);
     try {
-      const { data } = await aiAnalysis();
-      setAnalysis(data.analysis);
-      setStats(data.stats);
+      const result = await submitAndPoll<{ analysis: string; stats: Stats }>(() => aiAnalysis());
+      setAnalysis(result.analysis);
+      setStats(result.stats);
     } catch {
       setAnalysis('Ошибка при получении анализа. Проверьте настройки AI.');
     } finally {
