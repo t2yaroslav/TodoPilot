@@ -5,7 +5,6 @@ import {
   Text,
   Button,
   Group,
-  TextInput,
   ActionIcon,
   Loader,
   Paper,
@@ -22,6 +21,7 @@ const STEPS = [
     dataKey: 'achievements' as const,
     hasAI: true,
     aiHint: 'AI Анализ: предложит ваши успехи за неделю',
+    placeholder: 'Опишите достижение...',
   },
   {
     title: 'Какие трудности встретились на пути? \u{1F9F1}',
@@ -29,6 +29,7 @@ const STEPS = [
     dataKey: 'difficulties' as const,
     hasAI: false,
     aiHint: '',
+    placeholder: 'Опишите трудность...',
   },
   {
     title: 'Что можно изменить на этой неделе? \u{2935}\u{FE0F}',
@@ -36,6 +37,7 @@ const STEPS = [
     dataKey: 'improvements' as const,
     hasAI: true,
     aiHint: 'AI Анализ: предложит изменения в подходе к работе',
+    placeholder: 'Что изменить...',
   },
   {
     title: 'Какие цели поставим на эту неделю? \u{1F3AF}',
@@ -43,12 +45,16 @@ const STEPS = [
     dataKey: 'weeklyGoals' as const,
     hasAI: true,
     aiHint: 'AI Анализ: предложит цели на неделю',
+    placeholder: 'Опишите цель...',
   },
 ];
 
 /**
- * Editable list: input for new items is at the TOP with auto-focus.
- * Items displayed below as text lines with delete (x) button.
+ * Editable bullet list:
+ * - Each item is a contentEditable span with a bullet and a delete button
+ * - Last line is an empty row for adding new items (type + Enter)
+ * - Click any item to edit it inline
+ * - Input for new items is at the BOTTOM
  */
 function EditableList({
   items,
@@ -71,6 +77,25 @@ function EditableList({
     onChange(updated);
   };
 
+  const handleItemKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, index: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Move focus to the "new item" input
+      inputRef.current?.focus();
+    }
+    if (e.key === 'Backspace' && (e.currentTarget.textContent || '').trim() === '') {
+      e.preventDefault();
+      removeItem(index);
+      // Focus previous item or new-input
+      if (items.length > 1 && index > 0) {
+        const prev = e.currentTarget.parentElement?.previousElementSibling?.querySelector<HTMLElement>('[contenteditable]');
+        prev?.focus();
+      } else {
+        inputRef.current?.focus();
+      }
+    }
+  };
+
   const handleNewKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -83,45 +108,101 @@ function EditableList({
   };
 
   return (
-    <Stack gap={4}>
-      <TextInput
-        ref={inputRef}
-        placeholder={placeholder || 'Новый пункт — Enter для добавления'}
-        size="sm"
-        onKeyDown={handleNewKeyDown}
-        styles={{
-          input: {
-            paddingLeft: 8,
-          },
-        }}
-      />
+    <div style={{ minHeight: 32 }}>
       {items.map((item, i) => (
-        <Group key={i} gap={4} wrap="nowrap" align="center">
-          <TextInput
-            variant="unstyled"
-            value={item}
-            onChange={(e) => updateItem(i, e.currentTarget.value)}
-            style={{ flex: 1 }}
-            size="sm"
-            styles={{
-              input: {
-                paddingLeft: 8,
-                borderBottom: '1px solid var(--mantine-color-default-border)',
-                borderRadius: 0,
-              },
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 4,
+            padding: '3px 0',
+          }}
+        >
+          <span
+            style={{
+              color: 'var(--mantine-color-dimmed)',
+              userSelect: 'none',
+              lineHeight: '1.55',
+              fontSize: 14,
+              flexShrink: 0,
+              paddingTop: 1,
             }}
-          />
+          >
+            &bull;
+          </span>
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => {
+              const text = (e.currentTarget.textContent || '').trim();
+              if (text === '') {
+                removeItem(i);
+              } else if (text !== item) {
+                updateItem(i, text);
+              }
+            }}
+            onKeyDown={(e) => handleItemKeyDown(e, i)}
+            style={{
+              flex: 1,
+              outline: 'none',
+              fontSize: 14,
+              lineHeight: '1.55',
+              minHeight: 22,
+              wordBreak: 'break-word',
+            }}
+          >
+            {item}
+          </div>
           <ActionIcon
             variant="subtle"
             color="gray"
             size="xs"
             onClick={() => removeItem(i)}
+            style={{ flexShrink: 0, marginTop: 3 }}
           >
             <IconX size={14} />
           </ActionIcon>
-        </Group>
+        </div>
       ))}
-    </Stack>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '3px 0',
+        }}
+      >
+        <span
+          style={{
+            color: 'var(--mantine-color-dimmed)',
+            userSelect: 'none',
+            lineHeight: '1.55',
+            fontSize: 14,
+            flexShrink: 0,
+            opacity: 0.5,
+          }}
+        >
+          &bull;
+        </span>
+        <input
+          ref={inputRef}
+          placeholder={placeholder}
+          onKeyDown={handleNewKeyDown}
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            fontSize: 14,
+            lineHeight: '1.55',
+            background: 'transparent',
+            color: 'inherit',
+            fontFamily: 'inherit',
+            padding: 0,
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -146,7 +227,6 @@ export function WeeklySurveyWizard() {
 
   const newItemInputRef = useRef<HTMLInputElement>(null!);
 
-
   const stepIndex = currentStep - 1;
   const stepConfig = STEPS[stepIndex];
 
@@ -162,7 +242,6 @@ export function WeeklySurveyWizard() {
   // Auto-focus the new item input on step change and on wizard open
   useEffect(() => {
     if (wizardOpen) {
-      // Small delay to let the modal render
       const t = setTimeout(() => newItemInputRef.current?.focus(), 100);
       return () => clearTimeout(t);
     }
@@ -189,7 +268,6 @@ export function WeeklySurveyWizard() {
 
   const handleNext = () => {
     flushPendingInput();
-    // Use setTimeout so setStepData from flushPendingInput settles first
     setTimeout(() => {
       if (currentStep < 4) {
         nextStep();
@@ -221,23 +299,22 @@ export function WeeklySurveyWizard() {
         </Stepper>
 
         <Paper p="md" withBorder radius="md">
-          <Stack>
+          <Stack gap="xs">
             <Text fw={600} size="lg">
               {stepConfig.title}
             </Text>
-            <Text size="sm" c="dimmed">
-              {stepConfig.description}
-            </Text>
+
+            {currentData.length === 0 && !generating && (
+              <Text size="sm" c="dimmed">
+                {stepConfig.description}
+              </Text>
+            )}
 
             <EditableList
               items={currentData}
               onChange={(data) => setStepData(currentStep, data)}
               inputRef={newItemInputRef}
-              placeholder={
-                currentStep === 2
-                  ? 'Опишите трудность — Enter для добавления'
-                  : 'Новый пункт — Enter для добавления'
-              }
+              placeholder={stepConfig.placeholder}
             />
           </Stack>
         </Paper>
