@@ -190,11 +190,11 @@ async def generate_suggestions(
 
     # Build previous answers context
     previous_answers = {}
-    if body.achievements:
+    if body.achievements is not None:
         previous_answers["achievements"] = body.achievements
-    if body.difficulties:
+    if body.difficulties is not None:
         previous_answers["difficulties"] = body.difficulties
-    if body.improvements:
+    if body.improvements is not None:
         previous_answers["improvements"] = body.improvements
 
     # Fetch previous retrospective for context
@@ -218,7 +218,7 @@ async def submit_survey(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit the completed weekly survey and update psychoportrait."""
+    """Submit the completed weekly survey. Returns immediately without AI processing."""
     monday = _current_week_monday()
     survey = await _get_or_create_survey(user.id, monday, db)
 
@@ -229,25 +229,31 @@ async def submit_survey(
     survey.completed = True
     survey.dismissed = False
 
-    # Update psychoportrait based on survey answers
-    try:
-        new_profile = await ai_service.update_psychoportrait(
-            current_profile=user.profile_text,
-            survey_data={
-                "achievements": body.achievements,
-                "difficulties": body.difficulties,
-                "improvements": body.improvements,
-                "weekly_goals": body.weekly_goals,
-            },
-        )
-        if new_profile:
-            user.profile_text = new_profile
-    except Exception:
-        pass  # don't fail the survey if profile update fails
-
     await db.commit()
     await db.refresh(survey)
     return survey
+
+
+@router.post("/update-profile")
+async def update_profile_from_survey(
+    body: SurveySubmitRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update psychoportrait based on survey answers. Called separately in the background."""
+    new_profile = await ai_service.update_psychoportrait(
+        current_profile=user.profile_text,
+        survey_data={
+            "achievements": body.achievements,
+            "difficulties": body.difficulties,
+            "improvements": body.improvements,
+            "weekly_goals": body.weekly_goals,
+        },
+    )
+    if new_profile:
+        user.profile_text = new_profile
+        await db.commit()
+    return {"ok": True}
 
 
 @router.get("/results", response_model=list[SurveyOut])

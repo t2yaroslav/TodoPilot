@@ -140,4 +140,10 @@ export const submitSurvey = (data: {
   improvements: string[];
   weekly_goals: string[];
 }) => api.post('/survey/submit', data);
+export const updateProfileFromSurvey = (data: {
+  achievements: string[];
+  difficulties: string[];
+  improvements: string[];
+  weekly_goals: string[];
+}) => api.post('/survey/update-profile', data);
 export const getSurveyResults = () => api.get('/survey/results');
