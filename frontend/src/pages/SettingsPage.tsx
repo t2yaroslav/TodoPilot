@@ -36,7 +36,7 @@ export function SettingsPage() {
       </Paper>
 
       <Paper p="md" radius="md" withBorder>
-        <Text fw={600} mb="sm">Психопортрет (AI-заметки)</Text>
+        <Text fw={600} mb="sm">Профиль пользователя (AI-заметки)</Text>
         <Text size="xs" c="dimmed" mb="xs">
           AI использует эти заметки для персонализации рекомендаций. Вы можете редактировать.
         </Text>
