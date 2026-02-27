@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+.venv/
+*.egg-info/
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+frontend/nginx.conf
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Linter / type-checker caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.eslintcache
+
+# Logs
+*.log
+logs/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+docker-compose.yml
+docker-compose.dev.yml
+backend/Dockerfile
+frontend/Dockerfile
+nginx/
+
+# Git
+.git/
+.gitignore
+
+# Lock files
+package-lock.json
+
+# Alembic migration versions (auto-generated)
+backend/app/migrations/versions/
+
+# Static assets
+frontend/public/
