@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import {
   Modal,
   Stack,
@@ -21,43 +21,46 @@ const STEPS = [
     description: 'Перечень достижений за прошлую неделю',
     dataKey: 'achievements' as const,
     hasAI: true,
+    aiHint: 'AI Анализ: предложит ваши успехи за неделю',
   },
   {
     title: 'Какие трудности встретились на пути? \u{1F9F1}',
     description: 'Опишите трудности и препятствия прошлой недели',
     dataKey: 'difficulties' as const,
     hasAI: false,
+    aiHint: '',
   },
   {
     title: 'Что можно изменить на этой неделе? \u{2935}\u{FE0F}',
     description: 'AI предложит изменения на основе ваших ответов и профиля',
     dataKey: 'improvements' as const,
     hasAI: true,
+    aiHint: 'AI Анализ: предложит изменения в подходе к работе',
   },
   {
     title: 'Какие цели поставим на эту неделю? \u{1F3AF}',
     description: 'Цели и задачи на текущую неделю',
     dataKey: 'weeklyGoals' as const,
     hasAI: true,
+    aiHint: 'AI Анализ: предложит цели на неделю',
   },
 ];
 
 /**
- * Editable list: items displayed as text lines with delete (x) button.
- * Last row is always an empty input for adding new items — just type and press Enter.
- * Click on any item text to edit it inline.
+ * Editable list: input for new items is at the TOP with auto-focus.
+ * Items displayed below as text lines with delete (x) button.
  */
 function EditableList({
   items,
   onChange,
   placeholder,
+  inputRef,
 }: {
   items: string[];
   onChange: (items: string[]) => void;
   placeholder?: string;
+  inputRef: React.RefObject<HTMLInputElement>;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const removeItem = (index: number) => {
     onChange(items.filter((_, i) => i !== index));
   };
@@ -81,6 +84,17 @@ function EditableList({
 
   return (
     <Stack gap={4}>
+      <TextInput
+        ref={inputRef}
+        placeholder={placeholder || 'Новый пункт — Enter для добавления'}
+        size="sm"
+        onKeyDown={handleNewKeyDown}
+        styles={{
+          input: {
+            paddingLeft: 8,
+          },
+        }}
+      />
       {items.map((item, i) => (
         <Group key={i} gap={4} wrap="nowrap" align="center">
           <TextInput
@@ -107,18 +121,6 @@ function EditableList({
           </ActionIcon>
         </Group>
       ))}
-      <TextInput
-        ref={inputRef}
-        placeholder={placeholder || 'Новый пункт — Enter для добавления'}
-        size="sm"
-        onKeyDown={handleNewKeyDown}
-        styles={{
-          input: {
-            paddingLeft: 8,
-            opacity: 0.7,
-          },
-        }}
-      />
     </Stack>
   );
 }
@@ -142,6 +144,9 @@ export function WeeklySurveyWizard() {
     submit,
   } = useSurveyStore();
 
+  const newItemInputRef = useRef<HTMLInputElement>(null!);
+
+
   const stepIndex = currentStep - 1;
   const stepConfig = STEPS[stepIndex];
 
@@ -154,6 +159,15 @@ export function WeeklySurveyWizard() {
 
   const currentData = dataMap[stepConfig.dataKey];
 
+  // Auto-focus the new item input on step change and on wizard open
+  useEffect(() => {
+    if (wizardOpen) {
+      // Small delay to let the modal render
+      const t = setTimeout(() => newItemInputRef.current?.focus(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [wizardOpen, currentStep]);
+
   // On wizard open, trigger AI for step 1 if needed
   useEffect(() => {
     if (wizardOpen && currentStep === 1) {
@@ -161,12 +175,28 @@ export function WeeklySurveyWizard() {
     }
   }, [wizardOpen]);
 
-  const handleNext = () => {
-    if (currentStep < 4) {
-      nextStep();
-    } else {
-      submit();
+  /** Flush any pending text from the new-item input into the list */
+  const flushPendingInput = useCallback(() => {
+    const input = newItemInputRef.current;
+    if (input) {
+      const val = input.value.trim();
+      if (val) {
+        setStepData(currentStep, [...currentData, val]);
+        input.value = '';
+      }
     }
+  }, [currentStep, currentData, setStepData]);
+
+  const handleNext = () => {
+    flushPendingInput();
+    // Use setTimeout so setStepData from flushPendingInput settles first
+    setTimeout(() => {
+      if (currentStep < 4) {
+        nextStep();
+      } else {
+        submit();
+      }
+    }, 0);
   };
 
   return (
@@ -199,18 +229,10 @@ export function WeeklySurveyWizard() {
               {stepConfig.description}
             </Text>
 
-            {generating && (
-              <Group gap="xs" py={4}>
-                <Loader size="xs" color="indigo" />
-                <Text size="xs" c="dimmed">
-                  AI анализирует вашу неделю...
-                </Text>
-              </Group>
-            )}
-
             <EditableList
               items={currentData}
               onChange={(data) => setStepData(currentStep, data)}
+              inputRef={newItemInputRef}
               placeholder={
                 currentStep === 2
                   ? 'Опишите трудность — Enter для добавления'
@@ -220,15 +242,25 @@ export function WeeklySurveyWizard() {
           </Stack>
         </Paper>
 
-        {!generating && stepConfig.hasAI && (
-          <Button
-            variant="subtle"
-            size="xs"
-            leftSection={<IconSparkles size={14} />}
-            onClick={() => generateForStep(currentStep, true)}
-          >
-            {currentData.length > 0 ? 'Перегенерировать предложения AI' : 'Сгенерировать предложения AI'}
-          </Button>
+        {/* AI status / regenerate button — outside the list box */}
+        {stepConfig.hasAI && (
+          generating ? (
+            <Group gap="xs" justify="center">
+              <Loader size="xs" color="indigo" />
+              <Text size="xs" c="dimmed">
+                {stepConfig.aiHint}
+              </Text>
+            </Group>
+          ) : (
+            <Button
+              variant="subtle"
+              size="xs"
+              leftSection={<IconSparkles size={14} />}
+              onClick={() => generateForStep(currentStep, true)}
+            >
+              {currentData.length > 0 ? 'Перегенерировать предложения AI' : 'Сгенерировать предложения AI'}
+            </Button>
+          )
         )}
 
         <Group justify="space-between">
@@ -253,7 +285,6 @@ export function WeeklySurveyWizard() {
             }
             onClick={handleNext}
             loading={loading}
-            disabled={generating}
             color="indigo"
           >
             {currentStep < 4 ? 'Далее' : 'Завершить'}
