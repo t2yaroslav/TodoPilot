@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Modal, Textarea, Button, Stack, Text, Paper, ScrollArea, Loader, Group, Avatar, Badge } from '@mantine/core';
 import { IconMessageChatbot, IconPlus, IconCheck, IconArrowRight } from '@tabler/icons-react';
-import { aiSmartChat, aiExecuteAction } from '@/api/client';
+import { aiSmartChat, aiExecuteAction, submitAndPoll } from '@/api/client';
 import { useTaskStore } from '@/stores/taskStore';
 
 interface Props {
@@ -59,11 +59,13 @@ export function SmartChatModal({ opened, onClose }: Props) {
         content: m.content,
       }));
 
-      const { data } = await aiSmartChat(userMsg.content, history);
+      const data = await submitAndPoll<{ reply: string; actions?: TaskAction[] }>(
+        () => aiSmartChat(userMsg.content, history),
+      );
       const assistantMsg: Message = {
         role: 'assistant',
         content: data.reply,
-        actions: data.actions?.length > 0 ? data.actions : undefined,
+        actions: data.actions && data.actions.length > 0 ? data.actions : undefined,
         executedActions: {},
       };
       setMessages((prev) => [...prev, assistantMsg]);

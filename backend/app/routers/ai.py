@@ -9,9 +9,7 @@ from ..database import get_db
 from ..models import Goal, Project, Task, User
 from ..schemas import (
     AIChatMessage,
-    AIChatResponse,
     AIMessage,
-    AIResponse,
     BrainDumpItem,
     BrainDumpRequest,
     BrainDumpResponse,
@@ -19,6 +17,7 @@ from ..schemas import (
     TaskAction,
 )
 from ..services import ai_service
+from ..services import task_queue
 from .auth import get_current_user
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -152,13 +151,13 @@ async def _gather_stats(user: User, db: AsyncSession) -> dict:
     }
 
 
-@router.post("/chat", response_model=AIResponse)
+@router.post("/chat")
 async def ai_chat(
     body: AIMessage,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Gather context
+    # Gather context (fast DB queries)
     result = await db.execute(
         select(Task).where(Task.user_id == user.id, Task.completed == False).limit(50)  # noqa: E712
     )
@@ -166,8 +165,12 @@ async def ai_chat(
     tasks_ctx = "\n".join(f"- {t.title} (приоритет: {t.priority}, дедлайн: {t.due_date})" for t in tasks)
 
     messages = [{"role": "user", "content": body.message}]
-    reply = await ai_service.chat(messages, user_profile=user.profile_text, tasks_context=tasks_ctx)
-    return AIResponse(reply=reply)
+
+    # Submit LLM call to background queue
+    task_id = await task_queue.submit(
+        ai_service.chat(messages, user_profile=user.profile_text, tasks_context=tasks_ctx)
+    )
+    return {"task_id": task_id}
 
 
 @router.post("/analysis")
@@ -177,27 +180,34 @@ async def coaching_analysis(
 ):
     """Coaching analysis based on comprehensive user statistics."""
     stats = await _gather_stats(user, db)
-    analysis = await ai_service.coaching_analysis(stats, user_profile=user.profile_text)
-    return {"analysis": analysis, "stats": stats}
+
+    async def _run():
+        analysis = await ai_service.coaching_analysis(stats, user_profile=user.profile_text)
+        return {"analysis": analysis, "stats": stats}
+
+    task_id = await task_queue.submit(_run())
+    return {"task_id": task_id}
 
 
-@router.post("/brain-dump", response_model=BrainDumpResponse)
+@router.post("/brain-dump")
 async def brain_dump(
     body: BrainDumpRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Extract tasks, projects, goals from brain dump text."""
-    raw = await ai_service.brain_dump_extract(body.text, user_profile=user.profile_text)
+    async def _run():
+        raw = await ai_service.brain_dump_extract(body.text, user_profile=user.profile_text)
+        try:
+            parsed = json.loads(raw)
+            items = [BrainDumpItem(**item).model_dump() for item in parsed.get("items", [])]
+            reply = parsed.get("reply", "Готово!")
+        except (json.JSONDecodeError, Exception):
+            return {"reply": "Не удалось распознать структуру. Попробуйте переформулировать.", "items": []}
+        return {"reply": reply, "items": items}
 
-    try:
-        parsed = json.loads(raw)
-        items = [BrainDumpItem(**item) for item in parsed.get("items", [])]
-        reply = parsed.get("reply", "Готово!")
-    except (json.JSONDecodeError, Exception):
-        return BrainDumpResponse(reply="Не удалось распознать структуру. Попробуйте переформулировать.", items=[])
-
-    return BrainDumpResponse(reply=reply, items=items)
+    task_id = await task_queue.submit(_run())
+    return {"task_id": task_id}
 
 
 @router.post("/brain-dump/save")
@@ -349,12 +359,15 @@ async def morning_plan(
     overdue_tasks = overdue_q.scalar() or 0
 
     stats = {"avg_daily_7d": completed_7d / 7, "overdue_tasks": overdue_tasks}
+    profile = user.profile_text
 
-    plan = await ai_service.morning_plan(today_tasks, all_tasks, goals_list, stats, user_profile=user.profile_text)
-    return {"plan": plan}
+    task_id = await task_queue.submit(
+        ai_service.morning_plan(today_tasks, all_tasks, goals_list, stats, user_profile=profile)
+    )
+    return {"task_id": task_id}
 
 
-@router.post("/smart-chat", response_model=AIChatResponse)
+@router.post("/smart-chat")
 async def smart_chat(
     body: AIChatMessage,
     user: User = Depends(get_current_user),
@@ -378,22 +391,25 @@ async def smart_chat(
 
     # Build message history
     messages = body.history + [{"role": "user", "content": body.message}]
+    profile = user.profile_text
 
-    raw = await ai_service.chat_with_actions(
-        messages,
-        tasks_context=tasks_ctx,
-        projects_context=projects_ctx,
-        user_profile=user.profile_text,
-    )
+    async def _run():
+        raw = await ai_service.chat_with_actions(
+            messages,
+            tasks_context=tasks_ctx,
+            projects_context=projects_ctx,
+            user_profile=profile,
+        )
+        try:
+            parsed = json.loads(raw)
+            reply = parsed.get("reply", raw)
+            actions = [TaskAction(**a).model_dump() for a in parsed.get("actions", [])]
+            return {"reply": reply, "actions": actions}
+        except (json.JSONDecodeError, Exception):
+            return {"reply": raw, "actions": []}
 
-    # Try to parse as JSON with actions
-    try:
-        parsed = json.loads(raw)
-        reply = parsed.get("reply", raw)
-        actions = [TaskAction(**a) for a in parsed.get("actions", [])]
-        return AIChatResponse(reply=reply, actions=actions)
-    except (json.JSONDecodeError, Exception):
-        return AIChatResponse(reply=raw, actions=[])
+    task_id = await task_queue.submit(_run())
+    return {"task_id": task_id}
 
 
 @router.post("/smart-chat/execute-action")
@@ -474,8 +490,12 @@ async def productivity_analysis(
         )
     )
     tasks = [{"title": t.title, "completed_at": str(t.completed_at)} for t in result.scalars().all()]
-    analysis = await ai_service.analyze_productivity(tasks, user_profile=user.profile_text)
-    return {"analysis": analysis}
+    profile = user.profile_text
+
+    task_id = await task_queue.submit(
+        ai_service.analyze_productivity(tasks, user_profile=profile)
+    )
+    return {"task_id": task_id}
 
 
 @router.get("/retrospective")
@@ -491,13 +511,18 @@ async def weekly_retrospective(
 
     goals_result = await db.execute(select(Goal).where(Goal.user_id == user.id))
     goals = [{"title": g.title} for g in goals_result.scalars().all()]
+    profile = user.profile_text
 
-    retro = await ai_service.weekly_retrospective(tasks, goals, user_profile=user.profile_text)
-    return retro
+    task_id = await task_queue.submit(
+        ai_service.weekly_retrospective(tasks, goals, user_profile=profile)
+    )
+    return {"task_id": task_id}
 
 
 @router.post("/onboarding")
 async def onboarding(body: AIMessage, user: User = Depends(get_current_user)):
     history = []
-    reply = await ai_service.onboarding_chat(body.message, history)
-    return {"reply": reply}
+    task_id = await task_queue.submit(
+        ai_service.onboarding_chat(body.message, history)
+    )
+    return {"task_id": task_id}

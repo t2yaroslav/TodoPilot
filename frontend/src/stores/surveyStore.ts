@@ -7,6 +7,7 @@ import {
   submitSurvey,
   updateProfileFromSurvey,
   getSurveyResults,
+  submitAndPoll,
 } from '@/api/client';
 import { useAITaskStore } from './aiTaskStore';
 
@@ -145,12 +146,14 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
 
     set({ generating: true });
     try {
-      const { data } = await generateSurveyStep({
-        step,
-        achievements: step >= 3 ? state.achievements : undefined,
-        difficulties: step >= 3 ? state.difficulties : undefined,
-        improvements: step >= 4 ? state.improvements : undefined,
-      });
+      const suggestions = await submitAndPoll<string[]>(
+        () => generateSurveyStep({
+          step,
+          achievements: step >= 3 ? state.achievements : undefined,
+          difficulties: step >= 3 ? state.difficulties : undefined,
+          improvements: step >= 4 ? state.improvements : undefined,
+        }),
+      );
 
       const newSnapshots = {
         ...get().genSnapshots,
@@ -158,12 +161,12 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
       };
 
       // Pre-fill with suggestions
-      if (step === 1 && state.achievements.length === 0) {
-        set({ achievements: data.suggestions, genSnapshots: newSnapshots, generating: false });
+      if (step === 1 && get().achievements.length === 0) {
+        set({ achievements: suggestions, genSnapshots: newSnapshots, generating: false });
       } else if (step === 3) {
-        set({ improvements: data.suggestions, genSnapshots: newSnapshots, generating: false });
+        set({ improvements: suggestions, genSnapshots: newSnapshots, generating: false });
       } else if (step === 4) {
-        set({ weeklyGoals: data.suggestions, genSnapshots: newSnapshots, generating: false });
+        set({ weeklyGoals: suggestions, genSnapshots: newSnapshots, generating: false });
       } else {
         set({ genSnapshots: newSnapshots, generating: false });
       }
@@ -234,11 +237,11 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
       // Close wizard immediately
       set({ loading: false, wizardOpen: false, shouldShow: false });
 
-      // Run psychoportrait update in the background
+      // Run psychoportrait update in the background (polls until done)
       useAITaskStore.getState().runTask(
         'survey-profile',
         'Обновление психопортрета',
-        () => updateProfileFromSurvey(surveyData),
+        () => submitAndPoll(() => updateProfileFromSurvey(surveyData)),
       );
     } catch {
       set({ loading: false });
