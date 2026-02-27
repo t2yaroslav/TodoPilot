@@ -169,7 +169,7 @@ export function AIFunctionMenu() {
             leftSection={<IconClipboardList size={16} />}
             onClick={openWizard}
           >
-            Ретроспектива
+            Обзор недели
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item

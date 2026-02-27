@@ -25,11 +25,11 @@ const STEPS = [
   },
   {
     title: 'Какие трудности встретились на пути? \u{1F9F1}',
-    description: 'Опишите трудности и препятствия прошлой недели',
+    description: '',
     dataKey: 'difficulties' as const,
     hasAI: false,
     aiHint: '',
-    placeholder: 'Опишите трудность...',
+    placeholder: 'Опиши что мешало тебе добиться целей...',
   },
   {
     title: 'Что можно изменить на этой неделе? \u{2935}\u{FE0F}',
@@ -284,7 +284,7 @@ export function WeeklySurveyWizard() {
       title={
         <Group gap="xs">
           <IconSparkles size={20} color="var(--mantine-color-indigo-6)" />
-          <Text fw={600}>Еженедельная ретроспектива</Text>
+          <Text fw={600}>Обзор недели</Text>
         </Group>
       }
       size="lg"
@@ -304,7 +304,7 @@ export function WeeklySurveyWizard() {
               {stepConfig.title}
             </Text>
 
-            {currentData.length === 0 && !generating && (
+            {currentData.length === 0 && !generating && stepConfig.description && (
               <Text size="sm" c="dimmed">
                 {stepConfig.description}
               </Text>

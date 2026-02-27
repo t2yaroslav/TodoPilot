@@ -128,7 +128,7 @@ const NAV_ITEMS = [
   { label: 'Сегодня', icon: IconCalendarEvent, path: '/today', countKey: 'today' as const },
   { label: 'Предстоящие', icon: IconCalendarWeek, path: '/upcoming', countKey: null },
   { label: 'Выполнено', icon: IconCircleCheck, path: '/completed', countKey: 'completed' as const },
-  { label: 'Ретроспективы', icon: IconClipboardList, path: '/retrospectives', countKey: null },
+  { label: 'Обзоры недели', icon: IconClipboardList, path: '/retrospectives', countKey: null },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

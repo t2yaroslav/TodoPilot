@@ -16,14 +16,14 @@ export function SurveyPrompt() {
       title={
         <Group gap="xs">
           <IconSparkles size={20} color="var(--mantine-color-indigo-6)" />
-          <Text fw={600}>Еженедельная ретроспектива</Text>
+          <Text fw={600}>Обзор недели</Text>
         </Group>
       }
       size="sm"
     >
       <Stack>
         <Text size="sm">
-          Начало новой недели — отличное время для ретроспективы!
+          Начало новой недели — отличное время для обзора!
           AI поможет проанализировать прошлую неделю и спланировать новую.
         </Text>
         <Text size="sm" c="dimmed">
