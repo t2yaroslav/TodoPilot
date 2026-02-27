@@ -10,7 +10,6 @@ import {
   Loader,
   Paper,
   Stepper,
-  Center,
   Box,
 } from '@mantine/core';
 import { IconX, IconSparkles, IconArrowLeft, IconArrowRight, IconCheck } from '@tabler/icons-react';
@@ -200,26 +199,24 @@ export function WeeklySurveyWizard() {
               {stepConfig.description}
             </Text>
 
-            {generating ? (
-              <Center py="xl">
-                <Stack align="center" gap="xs">
-                  <Loader size="sm" color="indigo" />
-                  <Text size="sm" c="dimmed">
-                    AI анализирует вашу неделю...
-                  </Text>
-                </Stack>
-              </Center>
-            ) : (
-              <EditableList
-                items={currentData}
-                onChange={(data) => setStepData(currentStep, data)}
-                placeholder={
-                  currentStep === 2
-                    ? 'Опишите трудность — Enter для добавления'
-                    : 'Новый пункт — Enter для добавления'
-                }
-              />
+            {generating && (
+              <Group gap="xs" py={4}>
+                <Loader size="xs" color="indigo" />
+                <Text size="xs" c="dimmed">
+                  AI анализирует вашу неделю...
+                </Text>
+              </Group>
             )}
+
+            <EditableList
+              items={currentData}
+              onChange={(data) => setStepData(currentStep, data)}
+              placeholder={
+                currentStep === 2
+                  ? 'Опишите трудность — Enter для добавления'
+                  : 'Новый пункт — Enter для добавления'
+              }
+            />
           </Stack>
         </Paper>
 

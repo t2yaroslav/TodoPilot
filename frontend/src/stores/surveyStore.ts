@@ -5,8 +5,10 @@ import {
   saveSurveyDraft,
   generateSurveyStep,
   submitSurvey,
+  updateProfileFromSurvey,
   getSurveyResults,
 } from '@/api/client';
+import { useAITaskStore } from './aiTaskStore';
 
 export interface SurveyResult {
   id: string;
@@ -219,15 +221,25 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
 
   submit: async () => {
     const state = get();
+    const surveyData = {
+      achievements: state.achievements,
+      difficulties: state.difficulties,
+      improvements: state.improvements,
+      weekly_goals: state.weeklyGoals,
+    };
+
     set({ loading: true });
     try {
-      await submitSurvey({
-        achievements: state.achievements,
-        difficulties: state.difficulties,
-        improvements: state.improvements,
-        weekly_goals: state.weeklyGoals,
-      });
+      await submitSurvey(surveyData);
+      // Close wizard immediately
       set({ loading: false, wizardOpen: false, shouldShow: false });
+
+      // Run psychoportrait update in the background
+      useAITaskStore.getState().runTask(
+        'survey-profile',
+        'Обновление психопортрета',
+        () => updateProfileFromSurvey(surveyData),
+      );
     } catch {
       set({ loading: false });
     }
