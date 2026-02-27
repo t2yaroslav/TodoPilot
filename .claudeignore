@@ -27,7 +27,6 @@ logs/
 # Environment & secrets
 .env
 .env.*
-!.env.example
 
 # IDE / editor
 .idea/
@@ -40,13 +39,6 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Docker
-.dockerignore
-docker-compose.yml
-docker-compose.dev.yml
-backend/Dockerfile
-frontend/Dockerfile
-nginx/
 
 # Git
 .git/
