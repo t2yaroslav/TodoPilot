@@ -130,7 +130,7 @@ export function SurveyResultsPage() {
 
   return (
     <Stack>
-      <Title order={3}>Еженедельные ретроспективы</Title>
+      <Title order={3}>Обзоры недели</Title>
 
       {loading ? (
         <Center py="xl">
@@ -141,7 +141,7 @@ export function SurveyResultsPage() {
           <Stack align="center" gap="sm">
             <IconCalendar size={48} color="var(--mantine-color-gray-5)" />
             <Text c="dimmed" ta="center">
-              Ретроспектив пока нет. Они появляются каждый понедельник.
+              Обзоров пока нет. Они появляются каждый понедельник.
             </Text>
           </Stack>
         </Paper>
