@@ -127,8 +127,7 @@ const NAV_ITEMS = [
   { label: 'Входящие', icon: IconInbox, path: '/inbox', countKey: 'inbox' as const },
   { label: 'Сегодня', icon: IconCalendarEvent, path: '/today', countKey: 'today' as const },
   { label: 'Предстоящие', icon: IconCalendarWeek, path: '/upcoming', countKey: null },
-  { label: 'Выполнено', icon: IconCircleCheck, path: '/completed', countKey: 'completed' as const },
-  { label: 'Обзоры недели', icon: IconClipboardList, path: '/retrospectives', countKey: null },
+  { label: 'Выполнено', icon: IconCircleCheck, path: '/completed', countKey: 'completed' as const }
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -188,6 +187,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Menu.Item leftSection={<IconTarget size={14} />} onClick={() => handleNavigate('/goals')}>
                       Мои цели
                     </Menu.Item>
+                    <Menu.Item leftSection={<IconClipboardList size={14} />} onClick={() => handleNavigate('/retrospectives')}>
+                      Обзоры недели
+                    </Menu.Item>
+                    <Menu.Divider />
                     <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => handleNavigate('/settings')}>
                       Настройки
                     </Menu.Item>
