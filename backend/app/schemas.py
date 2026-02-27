@@ -198,17 +198,25 @@ class SurveyStatusOut(BaseModel):
     survey_id: UUID | None = None
     already_completed: bool = False
     already_dismissed: bool = False
+    draft: "SurveyOut | None" = None  # existing draft data
 
 
 class SurveyGenerateRequest(BaseModel):
-    step: int  # 1-4
-    achievements: list[str] | None = None  # answers from step 1 (for steps 3-4)
-    difficulties: list[str] | None = None  # answers from step 2 (for steps 3-4)
-    improvements: list[str] | None = None  # answers from step 3 (for step 4)
+    step: int  # 1, 3 or 4 (step 2 is manual)
+    achievements: list[str] | None = None
+    difficulties: list[str] | None = None
+    improvements: list[str] | None = None
 
 
 class SurveyGenerateResponse(BaseModel):
     suggestions: list[str]
+
+
+class SurveySaveDraftRequest(BaseModel):
+    achievements: list[str] | None = None
+    difficulties: list[str] | None = None
+    improvements: list[str] | None = None
+    weekly_goals: list[str] | None = None
 
 
 class SurveySubmitRequest(BaseModel):

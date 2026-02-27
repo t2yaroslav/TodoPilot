@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Modal,
   Stack,
@@ -13,7 +13,7 @@ import {
   Center,
   Box,
 } from '@mantine/core';
-import { IconPlus, IconTrash, IconSparkles, IconArrowLeft, IconArrowRight, IconCheck } from '@tabler/icons-react';
+import { IconX, IconSparkles, IconArrowLeft, IconArrowRight, IconCheck } from '@tabler/icons-react';
 import { useSurveyStore } from '@/stores/surveyStore';
 
 const STEPS = [
@@ -21,24 +21,33 @@ const STEPS = [
     title: 'Какой успех достигнут? \u{1F4AA}',
     description: 'Перечень достижений за прошлую неделю',
     dataKey: 'achievements' as const,
+    hasAI: true,
   },
   {
     title: 'Какие трудности встретились на пути? \u{1F9F1}',
-    description: 'Трудности и препятствия прошлой недели',
+    description: 'Опишите трудности и препятствия прошлой недели',
     dataKey: 'difficulties' as const,
+    hasAI: false,
   },
   {
     title: 'Что можно изменить на этой неделе? \u{2935}\u{FE0F}',
-    description: 'Предложения по улучшению продуктивности',
+    description: 'AI предложит изменения на основе ваших ответов и профиля',
     dataKey: 'improvements' as const,
+    hasAI: true,
   },
   {
     title: 'Какие цели поставим на эту неделю? \u{1F3AF}',
     description: 'Цели и задачи на текущую неделю',
     dataKey: 'weeklyGoals' as const,
+    hasAI: true,
   },
 ];
 
+/**
+ * Editable list: items displayed as text lines with delete (x) button.
+ * Last row is always an empty input for adding new items — just type and press Enter.
+ * Click on any item text to edit it inline.
+ */
 function EditableList({
   items,
   onChange,
@@ -48,15 +57,7 @@ function EditableList({
   onChange: (items: string[]) => void;
   placeholder?: string;
 }) {
-  const [newItem, setNewItem] = useState('');
-
-  const addItem = () => {
-    const text = newItem.trim();
-    if (text) {
-      onChange([...items, text]);
-      setNewItem('');
-    }
-  };
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const removeItem = (index: number) => {
     onChange(items.filter((_, i) => i !== index));
@@ -68,44 +69,57 @@ function EditableList({
     onChange(updated);
   };
 
+  const handleNewKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.currentTarget.value.trim();
+      if (val) {
+        onChange([...items, val]);
+        e.currentTarget.value = '';
+      }
+    }
+  };
+
   return (
-    <Stack gap="xs">
+    <Stack gap={4}>
       {items.map((item, i) => (
-        <Group key={i} gap="xs" wrap="nowrap">
+        <Group key={i} gap={4} wrap="nowrap" align="center">
           <TextInput
+            variant="unstyled"
             value={item}
             onChange={(e) => updateItem(i, e.currentTarget.value)}
             style={{ flex: 1 }}
             size="sm"
+            styles={{
+              input: {
+                paddingLeft: 8,
+                borderBottom: '1px solid var(--mantine-color-default-border)',
+                borderRadius: 0,
+              },
+            }}
           />
           <ActionIcon
             variant="subtle"
-            color="red"
-            size="sm"
+            color="gray"
+            size="xs"
             onClick={() => removeItem(i)}
           >
-            <IconTrash size={14} />
+            <IconX size={14} />
           </ActionIcon>
         </Group>
       ))}
-      <Group gap="xs" wrap="nowrap">
-        <TextInput
-          value={newItem}
-          onChange={(e) => setNewItem(e.currentTarget.value)}
-          placeholder={placeholder || 'Добавить пункт...'}
-          style={{ flex: 1 }}
-          size="sm"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              addItem();
-            }
-          }}
-        />
-        <ActionIcon variant="light" color="indigo" size="sm" onClick={addItem}>
-          <IconPlus size={14} />
-        </ActionIcon>
-      </Group>
+      <TextInput
+        ref={inputRef}
+        placeholder={placeholder || 'Новый пункт — Enter для добавления'}
+        size="sm"
+        onKeyDown={handleNewKeyDown}
+        styles={{
+          input: {
+            paddingLeft: 8,
+            opacity: 0.7,
+          },
+        }}
+      />
     </Stack>
   );
 }
@@ -122,7 +136,7 @@ export function WeeklySurveyWizard() {
     weeklyGoals,
     closeWizard,
     dismiss,
-    generateStep,
+    generateForStep,
     setStepData,
     nextStep,
     prevStep,
@@ -141,12 +155,12 @@ export function WeeklySurveyWizard() {
 
   const currentData = dataMap[stepConfig.dataKey];
 
-  // Generate AI suggestions when step changes
+  // On wizard open, trigger AI for step 1 if needed
   useEffect(() => {
-    if (wizardOpen && currentData.length === 0) {
-      generateStep(currentStep);
+    if (wizardOpen && currentStep === 1) {
+      generateForStep(1);
     }
-  }, [currentStep, wizardOpen]);
+  }, [wizardOpen]);
 
   const handleNext = () => {
     if (currentStep < 4) {
@@ -199,20 +213,24 @@ export function WeeklySurveyWizard() {
               <EditableList
                 items={currentData}
                 onChange={(data) => setStepData(currentStep, data)}
-                placeholder="Добавить пункт..."
+                placeholder={
+                  currentStep === 2
+                    ? 'Опишите трудность — Enter для добавления'
+                    : 'Новый пункт — Enter для добавления'
+                }
               />
             )}
           </Stack>
         </Paper>
 
-        {!generating && currentData.length === 0 && (
+        {!generating && stepConfig.hasAI && (
           <Button
             variant="subtle"
             size="xs"
             leftSection={<IconSparkles size={14} />}
-            onClick={() => generateStep(currentStep)}
+            onClick={() => generateForStep(currentStep, true)}
           >
-            Сгенерировать предложения AI
+            {currentData.length > 0 ? 'Перегенерировать предложения AI' : 'Сгенерировать предложения AI'}
           </Button>
         )}
 

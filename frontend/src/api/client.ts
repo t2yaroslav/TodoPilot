@@ -122,6 +122,12 @@ export const aiExecuteAction = (action: Record<string, unknown>) =>
 // Weekly Survey
 export const getSurveyStatus = () => api.get('/survey/status');
 export const dismissSurvey = () => api.post('/survey/dismiss');
+export const saveSurveyDraft = (data: {
+  achievements?: string[];
+  difficulties?: string[];
+  improvements?: string[];
+  weekly_goals?: string[];
+}) => api.post('/survey/save-draft', data);
 export const generateSurveyStep = (data: {
   step: number;
   achievements?: string[];

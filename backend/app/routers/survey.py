@@ -10,6 +10,7 @@ from ..schemas import (
     SurveyGenerateRequest,
     SurveyGenerateResponse,
     SurveyOut,
+    SurveySaveDraftRequest,
     SurveyStatusOut,
     SurveySubmitRequest,
 )
@@ -23,6 +24,44 @@ def _current_week_monday() -> date:
     """Return the Monday of the current week."""
     today = date.today()
     return today - timedelta(days=today.weekday())
+
+
+async def _get_or_create_survey(user_id, monday, db: AsyncSession) -> WeeklySurvey:
+    result = await db.execute(
+        select(WeeklySurvey).where(
+            WeeklySurvey.user_id == user_id,
+            WeeklySurvey.week_start == monday,
+        )
+    )
+    survey = result.scalar_one_or_none()
+    if survey is None:
+        survey = WeeklySurvey(user_id=user_id, week_start=monday)
+        db.add(survey)
+        await db.flush()
+    return survey
+
+
+async def _get_previous_retrospective(user_id, monday, db: AsyncSession) -> dict | None:
+    """Get the most recent completed survey before this week."""
+    result = await db.execute(
+        select(WeeklySurvey)
+        .where(
+            WeeklySurvey.user_id == user_id,
+            WeeklySurvey.week_start < monday,
+            WeeklySurvey.completed == True,  # noqa: E712
+        )
+        .order_by(WeeklySurvey.week_start.desc())
+        .limit(1)
+    )
+    prev = result.scalar_one_or_none()
+    if prev is None:
+        return None
+    return {
+        "achievements": prev.achievements or [],
+        "difficulties": prev.difficulties or [],
+        "improvements": prev.improvements or [],
+        "weekly_goals": prev.weekly_goals or [],
+    }
 
 
 @router.get("/status", response_model=SurveyStatusOut)
@@ -64,8 +103,8 @@ async def survey_status(
             already_dismissed=True,
         )
 
-    # Survey exists but not completed/dismissed — show it (user may have started it)
-    return SurveyStatusOut(should_show=True, survey_id=survey.id)
+    # Survey exists but not completed/dismissed — show it with draft data
+    return SurveyStatusOut(should_show=True, survey_id=survey.id, draft=survey)
 
 
 @router.post("/dismiss")
@@ -75,23 +114,34 @@ async def dismiss_survey(
 ):
     """Dismiss the weekly survey for this week."""
     monday = _current_week_monday()
-
-    result = await db.execute(
-        select(WeeklySurvey).where(
-            WeeklySurvey.user_id == user.id,
-            WeeklySurvey.week_start == monday,
-        )
-    )
-    survey = result.scalar_one_or_none()
-
-    if survey is None:
-        survey = WeeklySurvey(user_id=user.id, week_start=monday, dismissed=True)
-        db.add(survey)
-    else:
-        survey.dismissed = True
-
+    survey = await _get_or_create_survey(user.id, monday, db)
+    survey.dismissed = True
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/save-draft", response_model=SurveyOut)
+async def save_draft(
+    body: SurveySaveDraftRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save partial survey data as a draft."""
+    monday = _current_week_monday()
+    survey = await _get_or_create_survey(user.id, monday, db)
+
+    if body.achievements is not None:
+        survey.achievements = body.achievements
+    if body.difficulties is not None:
+        survey.difficulties = body.difficulties
+    if body.improvements is not None:
+        survey.improvements = body.improvements
+    if body.weekly_goals is not None:
+        survey.weekly_goals = body.weekly_goals
+
+    await db.commit()
+    await db.refresh(survey)
+    return survey
 
 
 @router.post("/generate", response_model=SurveyGenerateResponse)
@@ -100,9 +150,11 @@ async def generate_suggestions(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate AI suggestions for a specific wizard step."""
-    if body.step not in (1, 2, 3, 4):
-        raise HTTPException(status_code=400, detail="step must be 1-4")
+    """Generate AI suggestions for steps 1, 3 or 4. Step 2 is manual."""
+    if body.step not in (1, 3, 4):
+        raise HTTPException(status_code=400, detail="AI generation is only for steps 1, 3, 4")
+
+    monday = _current_week_monday()
 
     # Fetch last week's tasks
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
@@ -136,7 +188,7 @@ async def generate_suggestions(
     goals_result = await db.execute(select(Goal).where(Goal.user_id == user.id))
     goals = [{"title": g.title} for g in goals_result.scalars().all()]
 
-    # Build previous answers context for steps 3-4
+    # Build previous answers context
     previous_answers = {}
     if body.achievements:
         previous_answers["achievements"] = body.achievements
@@ -145,12 +197,16 @@ async def generate_suggestions(
     if body.improvements:
         previous_answers["improvements"] = body.improvements
 
+    # Fetch previous retrospective for context
+    previous_retrospective = await _get_previous_retrospective(user.id, monday, db)
+
     suggestions = await ai_service.generate_survey_step(
         step=body.step,
         week_tasks=week_tasks,
         goals=goals,
         user_profile=user.profile_text,
         previous_answers=previous_answers if previous_answers else None,
+        previous_retrospective=previous_retrospective,
     )
 
     return SurveyGenerateResponse(suggestions=suggestions)
@@ -162,20 +218,9 @@ async def submit_survey(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit the completed weekly survey."""
+    """Submit the completed weekly survey and update psychoportrait."""
     monday = _current_week_monday()
-
-    result = await db.execute(
-        select(WeeklySurvey).where(
-            WeeklySurvey.user_id == user.id,
-            WeeklySurvey.week_start == monday,
-        )
-    )
-    survey = result.scalar_one_or_none()
-
-    if survey is None:
-        survey = WeeklySurvey(user_id=user.id, week_start=monday)
-        db.add(survey)
+    survey = await _get_or_create_survey(user.id, monday, db)
 
     survey.achievements = body.achievements
     survey.difficulties = body.difficulties
@@ -183,6 +228,22 @@ async def submit_survey(
     survey.weekly_goals = body.weekly_goals
     survey.completed = True
     survey.dismissed = False
+
+    # Update psychoportrait based on survey answers
+    try:
+        new_profile = await ai_service.update_psychoportrait(
+            current_profile=user.profile_text,
+            survey_data={
+                "achievements": body.achievements,
+                "difficulties": body.difficulties,
+                "improvements": body.improvements,
+                "weekly_goals": body.weekly_goals,
+            },
+        )
+        if new_profile:
+            user.profile_text = new_profile
+    except Exception:
+        pass  # don't fail the survey if profile update fails
 
     await db.commit()
     await db.refresh(survey)

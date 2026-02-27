@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   getSurveyStatus,
   dismissSurvey,
+  saveSurveyDraft,
   generateSurveyStep,
   submitSurvey,
   getSurveyResults,
@@ -19,6 +20,17 @@ export interface SurveyResult {
   created_at: string;
 }
 
+/**
+ * Tracks what data looked like when AI last generated for a step.
+ * Used to decide if re-generation is needed when navigating forward.
+ */
+interface GenerationSnapshot {
+  /** Data snapshot of dependencies when AI generated */
+  deps: string;
+  /** Whether generation was performed */
+  done: boolean;
+}
+
 interface SurveyState {
   // Wizard state
   shouldShow: boolean;
@@ -33,8 +45,8 @@ interface SurveyState {
   improvements: string[];
   weeklyGoals: string[];
 
-  // AI suggestions (generated)
-  suggestions: string[];
+  // Generation tracking per step
+  genSnapshots: Record<number, GenerationSnapshot>;
 
   // Results
   results: SurveyResult[];
@@ -44,12 +56,21 @@ interface SurveyState {
   openWizard: () => void;
   closeWizard: () => void;
   dismiss: () => Promise<void>;
-  generateStep: (step: number) => Promise<void>;
+  generateForStep: (step: number, force?: boolean) => Promise<void>;
   setStepData: (step: number, data: string[]) => void;
-  nextStep: () => void;
+  goToStep: (step: number) => void;
+  nextStep: () => Promise<void>;
   prevStep: () => void;
   submit: () => Promise<void>;
   fetchResults: () => Promise<void>;
+}
+
+/** Build a string key representing the dependencies for AI generation of a step */
+function depsKey(state: SurveyState, step: number): string {
+  if (step === 1) return 'init';
+  if (step === 3) return JSON.stringify([state.achievements, state.difficulties]);
+  if (step === 4) return JSON.stringify([state.achievements, state.difficulties, state.improvements]);
+  return '';
 }
 
 export const useSurveyStore = create<SurveyState>((set, get) => ({
@@ -62,12 +83,25 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
   difficulties: [],
   improvements: [],
   weeklyGoals: [],
-  suggestions: [],
+  genSnapshots: {},
   results: [],
 
   checkStatus: async () => {
     try {
       const { data } = await getSurveyStatus();
+      if (data.should_show) {
+        // Load draft data if available
+        if (data.draft) {
+          set({
+            shouldShow: true,
+            achievements: data.draft.achievements || [],
+            difficulties: data.draft.difficulties || [],
+            improvements: data.draft.improvements || [],
+            weeklyGoals: data.draft.weekly_goals || [],
+          });
+          return;
+        }
+      }
       set({ shouldShow: data.should_show });
     } catch {
       set({ shouldShow: false });
@@ -78,11 +112,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     set({
       wizardOpen: true,
       currentStep: 1,
-      achievements: [],
-      difficulties: [],
-      improvements: [],
-      weeklyGoals: [],
-      suggestions: [],
+      genSnapshots: {},
     });
   },
 
@@ -99,9 +129,19 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     }
   },
 
-  generateStep: async (step: number) => {
+  generateForStep: async (step: number, force = false) => {
     const state = get();
-    set({ generating: true, suggestions: [] });
+
+    // Step 2 (difficulties) — never AI-generated
+    if (step === 2) return;
+
+    const currentDeps = depsKey(state, step);
+    const snapshot = state.genSnapshots[step];
+
+    // Skip if already generated with same dependencies and not forced
+    if (!force && snapshot?.done && snapshot.deps === currentDeps) return;
+
+    set({ generating: true });
     try {
       const { data } = await generateSurveyStep({
         step,
@@ -109,17 +149,21 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
         difficulties: step >= 3 ? state.difficulties : undefined,
         improvements: step >= 4 ? state.improvements : undefined,
       });
-      set({ suggestions: data.suggestions, generating: false });
 
-      // Pre-fill step data with suggestions if empty
+      const newSnapshots = {
+        ...get().genSnapshots,
+        [step]: { deps: currentDeps, done: true },
+      };
+
+      // Pre-fill with suggestions
       if (step === 1 && state.achievements.length === 0) {
-        set({ achievements: data.suggestions });
-      } else if (step === 2 && state.difficulties.length === 0) {
-        set({ difficulties: data.suggestions });
-      } else if (step === 3 && state.improvements.length === 0) {
-        set({ improvements: data.suggestions });
-      } else if (step === 4 && state.weeklyGoals.length === 0) {
-        set({ weeklyGoals: data.suggestions });
+        set({ achievements: data.suggestions, genSnapshots: newSnapshots, generating: false });
+      } else if (step === 3) {
+        set({ improvements: data.suggestions, genSnapshots: newSnapshots, generating: false });
+      } else if (step === 4) {
+        set({ weeklyGoals: data.suggestions, genSnapshots: newSnapshots, generating: false });
+      } else {
+        set({ genSnapshots: newSnapshots, generating: false });
       }
     } catch {
       set({ generating: false });
@@ -133,17 +177,43 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     else if (step === 4) set({ weeklyGoals: data });
   },
 
-  nextStep: () => {
-    const { currentStep } = get();
+  goToStep: (step: number) => {
+    set({ currentStep: step });
+  },
+
+  nextStep: async () => {
+    const state = get();
+    const { currentStep, achievements, difficulties, improvements, weeklyGoals } = state;
+
+    // Save current step data as draft
+    const draftData: Record<string, string[]> = {};
+    if (currentStep === 1) draftData.achievements = achievements;
+    else if (currentStep === 2) draftData.difficulties = difficulties;
+    else if (currentStep === 3) draftData.improvements = improvements;
+    else if (currentStep === 4) draftData.weekly_goals = weeklyGoals;
+
+    try {
+      await saveSurveyDraft(draftData);
+    } catch {
+      // non-critical
+    }
+
     if (currentStep < 4) {
-      set({ currentStep: currentStep + 1, suggestions: [] });
+      const nextStepNum = currentStep + 1;
+      set({ currentStep: nextStepNum });
+
+      // Auto-generate for next step if needed (not step 2)
+      if (nextStepNum !== 2) {
+        // Use setTimeout to let state settle
+        setTimeout(() => get().generateForStep(nextStepNum), 0);
+      }
     }
   },
 
   prevStep: () => {
     const { currentStep } = get();
     if (currentStep > 1) {
-      set({ currentStep: currentStep - 1, suggestions: [] });
+      set({ currentStep: currentStep - 1 });
     }
   },
 

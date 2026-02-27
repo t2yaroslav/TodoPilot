@@ -114,8 +114,11 @@ async def generate_survey_step(
     goals: list[dict],
     user_profile: str | None = None,
     previous_answers: dict | None = None,
+    previous_retrospective: dict | None = None,
 ) -> list[str]:
-    """Generate AI suggestions for a specific survey wizard step."""
+    """Generate AI suggestions for survey wizard steps 1, 3, 4.
+    Step 2 (difficulties) is filled manually by the user.
+    """
     import json
 
     tasks_text = "\n".join(
@@ -127,29 +130,38 @@ async def generate_survey_step(
 
     context = f"Задачи за прошлую неделю:\n{tasks_text}\n\nЦели пользователя:\n{goals_text}"
 
+    prev_retro_text = ""
+    if previous_retrospective:
+        parts = []
+        if previous_retrospective.get("achievements"):
+            parts.append(f"Достижения: {json.dumps(previous_retrospective['achievements'], ensure_ascii=False)}")
+        if previous_retrospective.get("difficulties"):
+            parts.append(f"Трудности: {json.dumps(previous_retrospective['difficulties'], ensure_ascii=False)}")
+        if previous_retrospective.get("improvements"):
+            parts.append(f"Что меняли: {json.dumps(previous_retrospective['improvements'], ensure_ascii=False)}")
+        if previous_retrospective.get("weekly_goals"):
+            parts.append(f"Цели прошлой недели: {json.dumps(previous_retrospective['weekly_goals'], ensure_ascii=False)}")
+        if parts:
+            prev_retro_text = "\n\nПредыдущая ретроспектива:\n" + "\n".join(parts)
+
     if step == 1:
         prompt = (
-            f"{context}\n\n"
+            f"{context}{prev_retro_text}\n\n"
             "На основе выполненных задач за неделю, составь список из 3-5 ключевых достижений пользователя. "
             "Формулируй кратко и конкретно. Верни JSON-массив строк. Только JSON, без markdown."
-        )
-    elif step == 2:
-        prompt = (
-            f"{context}\n\n"
-            "На основе невыполненных задач и общего контекста, предположи 2-4 трудности, "
-            "с которыми пользователь мог столкнуться на этой неделе. "
-            "Формулируй как наблюдения, а не обвинения. Верни JSON-массив строк. Только JSON, без markdown."
         )
     elif step == 3:
         prev = previous_answers or {}
         achievements = prev.get("achievements", [])
         difficulties = prev.get("difficulties", [])
         prompt = (
-            f"{context}\n\n"
-            f"Достижения пользователя: {json.dumps(achievements, ensure_ascii=False)}\n"
-            f"Трудности пользователя: {json.dumps(difficulties, ensure_ascii=False)}\n\n"
-            "На основе психопортрета, достижений и трудностей, предложи 3-5 конкретных действий, "
-            "которые можно предпринять на этой неделе для улучшения продуктивности и достижения целей. "
+            f"{context}{prev_retro_text}\n\n"
+            f"Достижения пользователя на этой неделе: {json.dumps(achievements, ensure_ascii=False)}\n"
+            f"Трудности, которые отметил пользователь: {json.dumps(difficulties, ensure_ascii=False)}\n\n"
+            "На основе психопортрета пользователя, его достижений, трудностей, "
+            "а также предыдущей ретроспективы, предложи 3-5 конкретных изменений в подходе к работе, "
+            "которые помогут лучше достигать целей на этой неделе. "
+            "Это должны быть практические изменения в привычках, организации или подходе, а НЕ список задач. "
             "Верни JSON-массив строк. Только JSON, без markdown."
         )
     else:  # step 4
@@ -158,7 +170,7 @@ async def generate_survey_step(
         difficulties = prev.get("difficulties", [])
         improvements = prev.get("improvements", [])
         prompt = (
-            f"{context}\n\n"
+            f"{context}{prev_retro_text}\n\n"
             f"Достижения: {json.dumps(achievements, ensure_ascii=False)}\n"
             f"Трудности: {json.dumps(difficulties, ensure_ascii=False)}\n"
             f"Планируемые изменения: {json.dumps(improvements, ensure_ascii=False)}\n\n"
@@ -176,7 +188,6 @@ async def generate_survey_step(
             return [str(item) for item in parsed]
         return []
     except json.JSONDecodeError:
-        # Try to extract JSON array from response
         import re
         match = re.search(r'\[.*\]', result, re.DOTALL)
         if match:
@@ -186,6 +197,37 @@ async def generate_survey_step(
             except json.JSONDecodeError:
                 pass
         return []
+
+
+async def update_psychoportrait(
+    current_profile: str | None,
+    survey_data: dict,
+) -> str:
+    """Update user psychoportrait based on completed survey answers."""
+    import json
+
+    current = current_profile or "Пока нет данных."
+    survey_text = (
+        f"Достижения: {json.dumps(survey_data.get('achievements', []), ensure_ascii=False)}\n"
+        f"Трудности: {json.dumps(survey_data.get('difficulties', []), ensure_ascii=False)}\n"
+        f"Что хочет изменить: {json.dumps(survey_data.get('improvements', []), ensure_ascii=False)}\n"
+        f"Цели на неделю: {json.dumps(survey_data.get('weekly_goals', []), ensure_ascii=False)}"
+    )
+
+    messages = [
+        {
+            "role": "user",
+            "content": (
+                f"Текущий психопортрет пользователя:\n{current}\n\n"
+                f"Новые данные из еженедельной ретроспективы:\n{survey_text}\n\n"
+                "Дополни и обнови психопортрет пользователя на основе новых данных. "
+                "Сохрани существующие наблюдения, добавь новые инсайты. "
+                "Пиши в третьем лице, кратко. Формат — связный текст, 3-7 предложений. "
+                "Только текст портрета, без вступлений и комментариев."
+            ),
+        }
+    ]
+    return await chat(messages)
 
 
 async def coaching_analysis(stats: dict, user_profile: str | None = None) -> str:
