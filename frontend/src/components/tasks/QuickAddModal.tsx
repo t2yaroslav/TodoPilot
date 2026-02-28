@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Modal, TextInput, Select, Group, Button } from '@mantine/core';
-import { IconCalendar, IconRepeat, IconTarget } from '@tabler/icons-react';
+import { IconCalendar, IconTarget } from '@tabler/icons-react';
 import { useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
-import { getRecurrenceSelectData } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -72,15 +71,20 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
           value={priority}
           onChange={(v) => setPriority(v || '0')}
           data={[
-            { value: '0', label: 'Без приоритета' },
-            { value: '1', label: '⚪ Не важно, не срочно' },
-            { value: '2', label: '🔵 Важно, не срочно' },
-            { value: '3', label: '🟠 Не важно и срочно' },
             { value: '4', label: '🔴 Важно и срочно' },
+            { value: '3', label: '🟠 Не важно и срочно' },
+            { value: '2', label: '🔵 Важно, не срочно' },
+            { value: '1', label: '⚪ Не важно, не срочно' },
+            { value: '0', label: 'Без приоритета' },
           ]}
           w={180}
         />
-        <DatePickerMenu value={dueDate} onChange={setDueDate} onRecurrenceChange={setRecurrence}>
+        <DatePickerMenu
+          value={dueDate}
+          onChange={setDueDate}
+          recurrence={recurrence}
+          onRecurrenceChange={setRecurrence}
+        >
           <Button
             size="sm"
             variant="default"
@@ -89,15 +93,6 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
             {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
           </Button>
         </DatePickerMenu>
-        <Select
-          size="sm"
-          placeholder="Повторение"
-          value={recurrence || ''}
-          onChange={(v) => setRecurrence(v || null)}
-          data={getRecurrenceSelectData(recurrence)}
-          leftSection={<IconRepeat size={14} />}
-          w={170}
-        />
         {projects.length > 0 && (
           <Select
             size="sm"

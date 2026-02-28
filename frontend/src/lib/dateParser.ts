@@ -114,8 +114,8 @@ export function parseDateInput(raw: string): ParseResult | null {
     return { date: dayjs().add(2, 'day').toDate(), recurrence: null, label: 'Послезавтра' };
   }
 
-  /* ── 4. "По будням" ───────────────── */
-  if (/^по\s+будн/i.test(text)) {
+  /* ── 4. "По будням" / "каждый будень" ───────────────── */
+  if (/^по\s+будн/i.test(text) || /^кажд\S*\s+будн/i.test(text)) {
     return {
       date: nextWeekday(1),
       recurrence: 'weekly:1,2,3,4,5',

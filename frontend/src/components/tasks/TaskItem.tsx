@@ -73,6 +73,13 @@ export function TaskItem({ task, onEdit, filterParams, isTodayPage }: Props) {
     });
   };
 
+  const handleRecurrenceChange = (rec: string | null) => {
+    editTask(task.id, { recurrence: rec }).then(() => {
+      fetchTasks(filterParams);
+      refreshAllCounts();
+    });
+  };
+
   return (
     <Box
       py={8}
@@ -125,6 +132,8 @@ export function TaskItem({ task, onEdit, filterParams, isTodayPage }: Props) {
                 <DatePickerMenu
                   value={new Date(task.due_date)}
                   onChange={handleDateChange}
+                  recurrence={task.recurrence}
+                  onRecurrenceChange={handleRecurrenceChange}
                 >
                   <Group
                     gap={4}

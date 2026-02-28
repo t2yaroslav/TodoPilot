@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Stack, Text, TextInput, Group, Button, ActionIcon, Select, Box } from '@mantine/core';
-import { IconPlus, IconCalendar, IconRepeat } from '@tabler/icons-react';
+import { Stack, Text, TextInput, Group, Button, Select, Box } from '@mantine/core';
+import { IconPlus, IconCalendar } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
-import { getRecurrenceSelectData } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -96,15 +95,20 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
               value={priority}
               onChange={(v) => setPriority(v || '0')}
               data={[
-                { value: '0', label: 'Без приоритета' },
-                { value: '1', label: '⚪ Не важно, не срочно' },
-                { value: '2', label: '🔵 Важно, не срочно' },
-                { value: '3', label: '🟠 Не важно и срочно' },
                 { value: '4', label: '🔴 Важно и срочно' },
+                { value: '3', label: '🟠 Не важно и срочно' },
+                { value: '2', label: '🔵 Важно, не срочно' },
+                { value: '1', label: '⚪ Не важно, не срочно' },
+                { value: '0', label: 'Без приоритета' },
               ]}
               w={160}
             />
-            <DatePickerMenu value={dueDate} onChange={setDueDate} onRecurrenceChange={setRecurrence}>
+            <DatePickerMenu
+              value={dueDate}
+              onChange={setDueDate}
+              recurrence={recurrence}
+              onRecurrenceChange={setRecurrence}
+            >
               <Button
                 size="xs"
                 variant="default"
@@ -113,15 +117,6 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
                 {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
               </Button>
             </DatePickerMenu>
-            <Select
-              size="xs"
-              placeholder="Повторение"
-              value={recurrence || ''}
-              onChange={(v) => setRecurrence(v || null)}
-              data={getRecurrenceSelectData(recurrence, true)}
-              leftSection={<IconRepeat size={12} />}
-              w={150}
-            />
             {projects.length > 0 && (
               <Select
                 size="xs"

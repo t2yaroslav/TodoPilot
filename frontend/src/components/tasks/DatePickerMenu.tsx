@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Text, Group, Divider, Box, TextInput } from '@mantine/core';
+import { Menu, Text, Group, Divider, Box, TextInput, UnstyledButton } from '@mantine/core';
 import { DatePicker } from '@mantine/dates';
 import {
   IconSun,
@@ -11,6 +11,9 @@ import {
   IconCalendarDue,
   IconRepeat,
   IconCommand,
+  IconChevronRight,
+  IconCheck,
+  IconX,
 } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
@@ -22,6 +25,7 @@ dayjs.locale('ru');
 interface Props {
   value: Date | null;
   onChange: (date: Date | null) => void;
+  recurrence?: string | null;
   onRecurrenceChange?: (recurrence: string | null) => void;
   children: React.ReactNode;
   withinPortal?: boolean;
@@ -102,10 +106,53 @@ function getQuickOptions(): QuickOption[] {
   return options;
 }
 
-export function DatePickerMenu({ value, onChange, onRecurrenceChange, children, withinPortal = true }: Props) {
+interface RecurrenceOption {
+  value: string | null;
+  label: string;
+}
+
+function getRecurrenceOptions(date: Date | null): RecurrenceOption[] {
+  const options: RecurrenceOption[] = [
+    { value: 'daily', label: 'Каждый день' },
+  ];
+
+  if (date) {
+    const d = dayjs(date);
+    const isoDay = d.day() === 0 ? 7 : d.day();
+    const dayNames: Record<number, string> = {
+      1: 'понедельник', 2: 'вторник', 3: 'среду', 4: 'четверг',
+      5: 'пятницу', 6: 'субботу', 7: 'воскресенье',
+    };
+    options.push({
+      value: `weekly:${isoDay}`,
+      label: `Каждую неделю по ${dayNames[isoDay] || ''}`,
+    });
+  } else {
+    options.push({ value: 'weekly', label: 'Каждую неделю' });
+  }
+
+  options.push({ value: 'weekly:1,2,3,4,5', label: 'По будням (пн–пт)' });
+
+  if (date) {
+    const dayOfMonth = dayjs(date).date();
+    options.push({
+      value: `monthly:${dayOfMonth}`,
+      label: `Каждый месяц ${dayOfMonth}-го числа`,
+    });
+  } else {
+    options.push({ value: 'monthly', label: 'Каждый месяц' });
+  }
+
+  options.push({ value: 'yearly', label: 'Каждый год' });
+
+  return options;
+}
+
+export function DatePickerMenu({ value, onChange, recurrence, onRecurrenceChange, children, withinPortal = true }: Props) {
   const [opened, setOpened] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [parsePreview, setParsePreview] = useState<ReturnType<typeof parseDateInput>>(null);
+  const [showRecurrence, setShowRecurrence] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const quickOptions = getQuickOptions();
 
@@ -116,15 +163,23 @@ export function DatePickerMenu({ value, onChange, onRecurrenceChange, children, 
     } else {
       setInputValue('');
       setParsePreview(null);
+      setShowRecurrence(false);
     }
   }, [opened]);
 
-  const handleSelect = (date: Date | null, recurrence?: string | null) => {
+  const handleSelect = (date: Date | null, rec?: string | null) => {
     onChange(date);
-    if (recurrence !== undefined && onRecurrenceChange) {
-      onRecurrenceChange(recurrence);
+    if (rec !== undefined && onRecurrenceChange) {
+      onRecurrenceChange(rec);
     }
     setOpened(false);
+  };
+
+  const handleRecurrenceSelect = (rec: string | null) => {
+    if (onRecurrenceChange) {
+      onRecurrenceChange(rec);
+    }
+    setShowRecurrence(false);
   };
 
   const handleInputChange = (val: string) => {
@@ -149,6 +204,8 @@ export function DatePickerMenu({ value, onChange, onRecurrenceChange, children, 
     }
   };
 
+  const recurrenceOptions = getRecurrenceOptions(value);
+
   return (
     <Menu
       opened={opened}
@@ -169,7 +226,7 @@ export function DatePickerMenu({ value, onChange, onRecurrenceChange, children, 
         <Box px="xs" pt="xs" pb={4}>
           <TextInput
             ref={inputRef}
-            placeholder="Напр: завтра, каждый пн и ср"
+            placeholder="Напр: завтра, каждый будень"
             size="xs"
             value={inputValue}
             onChange={(e) => handleInputChange(e.currentTarget.value)}
@@ -249,6 +306,74 @@ export function DatePickerMenu({ value, onChange, onRecurrenceChange, children, 
             size="xs"
           />
         </Box>
+
+        {/* ── Recurrence section ── */}
+        {onRecurrenceChange && (
+          <>
+            <Divider />
+            {showRecurrence ? (
+              <Box py={4}>
+                <Group gap={6} px="sm" py={4} mb={2}>
+                  <IconRepeat size={14} color="var(--mantine-color-blue-6)" />
+                  <Text size="xs" fw={600} c="blue">Повторение</Text>
+                </Group>
+                {recurrenceOptions.map((opt) => (
+                  <UnstyledButton
+                    key={opt.value ?? '__none'}
+                    w="100%"
+                    px="sm"
+                    py={6}
+                    onClick={(e) => { e.stopPropagation(); handleRecurrenceSelect(opt.value); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      borderRadius: 4,
+                      background: recurrence === opt.value ? 'var(--mantine-color-blue-light)' : undefined,
+                    }}
+                    __vars={{
+                      '--ub-hover': 'var(--mantine-color-gray-light-hover)',
+                    }}
+                  >
+                    {recurrence === opt.value && (
+                      <IconCheck size={14} color="var(--mantine-color-blue-6)" />
+                    )}
+                    <Text size="xs" style={{ flex: 1 }}>{opt.label}</Text>
+                  </UnstyledButton>
+                ))}
+                {recurrence && (
+                  <UnstyledButton
+                    w="100%"
+                    px="sm"
+                    py={6}
+                    onClick={(e) => { e.stopPropagation(); handleRecurrenceSelect(null); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, borderRadius: 4 }}
+                  >
+                    <IconX size={14} color="var(--mantine-color-red-5)" />
+                    <Text size="xs" c="red">Без повторения</Text>
+                  </UnstyledButton>
+                )}
+              </Box>
+            ) : (
+              <UnstyledButton
+                w="100%"
+                px="sm"
+                py={8}
+                onClick={(e) => { e.stopPropagation(); setShowRecurrence(true); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+              >
+                <IconRepeat
+                  size={18}
+                  color={recurrence ? 'var(--mantine-color-blue-5)' : 'var(--mantine-color-gray-5)'}
+                />
+                <Text size="sm" style={{ flex: 1 }} c={recurrence ? 'blue' : undefined}>
+                  {recurrence ? getRecurrenceLabel(recurrence) : 'Повторение'}
+                </Text>
+                <IconChevronRight size={14} color="var(--mantine-color-dimmed)" />
+              </UnstyledButton>
+            )}
+          </>
+        )}
       </Menu.Dropdown>
     </Menu>
   );

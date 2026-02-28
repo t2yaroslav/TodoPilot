@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Stack, Text, TextInput, Group, Button, Box, Select } from '@mantine/core';
-import { IconPlus, IconCalendar, IconRepeat, IconCircleFilled } from '@tabler/icons-react';
+import { IconPlus, IconCalendar, IconCircleFilled } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { TaskItem } from './TaskItem';
 import { TaskEditModal } from './TaskEditModal';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
-import { getRecurrenceSelectData } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -21,11 +20,11 @@ const PRIORITY_GROUPS = [
 ];
 
 const PRIORITY_OPTIONS = [
-  { value: '0', label: 'Без приоритета' },
-  { value: '1', label: '⚪ Не важно, не срочно' },
-  { value: '2', label: '🔵 Важно, не срочно' },
-  { value: '3', label: '🟠 Не важно и срочно' },
   { value: '4', label: '🔴 Важно и срочно' },
+  { value: '3', label: '🟠 Не важно и срочно' },
+  { value: '2', label: '🔵 Важно, не срочно' },
+  { value: '1', label: '⚪ Не важно, не срочно' },
+  { value: '0', label: 'Без приоритета' },
 ];
 
 interface Props {
@@ -156,6 +155,7 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
                   <DatePickerMenu
                     value={dueDate}
                     onChange={setDueDate}
+                    recurrence={recurrence}
                     onRecurrenceChange={setRecurrence}
                   >
                     <Button
@@ -167,15 +167,6 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
                     </Button>
                   </DatePickerMenu>
 
-                  <Select
-                    size="xs"
-                    placeholder="Повторение"
-                    value={recurrence || ''}
-                    onChange={(v) => setRecurrence(v || null)}
-                    data={getRecurrenceSelectData(recurrence, true)}
-                    leftSection={<IconRepeat size={12}/>}
-                    w={150}
-                  />
                   {projects.length > 0 && (
                     <Select
                       size="xs"
