@@ -4,7 +4,7 @@ import { IconCalendar, IconRepeat } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
-import { getRecurrenceLabel, getRecurrenceSelectData } from '@/lib/recurrence';
+import { getRecurrenceLabel } from '@/lib/recurrence';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -57,25 +57,42 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
 
   return (
     <Modal opened={!!task} onClose={onClose} title="Редактирование задачи" size={800}>
-      <Stack>
-        <TextInput label="Название" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
-        <Textarea label="Описание" value={description} onChange={(e) => setDescription(e.currentTarget.value)} autosize minRows={2} />
+      <Stack gap="sm">
+        <TextInput
+          placeholder="Название задачи"
+          value={title}
+          onChange={(e) => setTitle(e.currentTarget.value)}
+        />
+        <Textarea
+          placeholder="Описание"
+          value={description}
+          onChange={(e) => setDescription(e.currentTarget.value)}
+          autosize
+          minRows={1}
+          maxRows={4}
+          size="sm"
+        />
         <Group grow>
           <Select
             label="Приоритет"
             value={priority}
             onChange={(v) => setPriority(v || '0')}
             data={[
-              { value: '0', label: 'Без приоритета' },
-              { value: '1', label: '⚪ Не важно, не срочно' },
-              { value: '2', label: '🔵 Важно, не срочно' },
-              { value: '3', label: '🟠 Не важно и срочно' },
               { value: '4', label: '🔴 Важно и срочно' },
+              { value: '3', label: '🟠 Не важно и срочно' },
+              { value: '2', label: '🔵 Важно, не срочно' },
+              { value: '1', label: '⚪ Не важно, не срочно' },
+              { value: '0', label: 'Без приоритета' },
             ]}
           />
           <Box>
             <Text size="sm" fw={500} mb={4}>Срок</Text>
-            <DatePickerMenu value={dueDate} onChange={setDueDate} onRecurrenceChange={setRecurrence}>
+            <DatePickerMenu
+              value={dueDate}
+              onChange={setDueDate}
+              recurrence={recurrence}
+              onRecurrenceChange={setRecurrence}
+            >
               <Button
                 variant="default"
                 leftSection={<IconCalendar size={16} />}
@@ -83,29 +100,17 @@ export function TaskEditModal({ task, onClose, filterParams }: Props) {
                 styles={{ inner: { justifyContent: 'flex-start' } }}
               >
                 {dueDate ? dayjs(dueDate).format('D MMM') : 'Выбрать дату'}
+                {recurrence && (
+                  <Group gap={4} ml={8}>
+                    <IconRepeat size={14} color="var(--mantine-color-blue-5)" />
+                    <Text size="xs" c="blue" component="span">
+                      {getRecurrenceLabel(recurrence)}
+                    </Text>
+                  </Group>
+                )}
               </Button>
             </DatePickerMenu>
           </Box>
-        </Group>
-        <Group grow>
-          <Select
-            label="Повторение"
-            value={recurrence || ''}
-            onChange={(v) => setRecurrence(v || null)}
-            data={getRecurrenceSelectData(recurrence)}
-            leftSection={<IconRepeat size={16} />}
-          />
-          {recurrence && dueDate && (
-            <Box>
-              <Text size="sm" fw={500} mb={4}>&nbsp;</Text>
-              <Group gap={4}>
-                <IconRepeat size={14} color="var(--mantine-color-blue-5)" />
-                <Text size="sm" c="blue">
-                  {getRecurrenceLabel(recurrence)}
-                </Text>
-              </Group>
-            </Box>
-          )}
         </Group>
         <Group grow>
           <Select
