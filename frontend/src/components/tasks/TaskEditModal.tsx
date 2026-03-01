@@ -128,7 +128,7 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
   const taskProject = task?.project_id ? projects.find((p) => p.id === task.project_id) : null;
   const modalTitle = taskProject ? (
     <Group gap={6}>
-      <IconHash size={18} color={taskProject.color} />
+      <IconHash size={18} color={taskProject.color}/>
       <Text size="sm" fw={500}>{taskProject.title}</Text>
     </Group>
   ) : sectionTitle ? (
@@ -150,7 +150,7 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
       opened={!!task}
       onClose={onClose}
       title={modalTitle}
-      size={800}
+      size={860}
       styles={{
         body: { minHeight: 400 },
         header: { borderBottom: '1px solid var(--mantine-color-default-border)', paddingBottom: 12 },
@@ -158,9 +158,10 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
     >
       <Grid gutter="lg" pt="md">
         {/* Left: title + description */}
-        <Grid.Col span={7}>
+        <Grid.Col span={8}>
           <Stack gap="md">
-            <TextInput
+            <Textarea
+              size="xs"
               placeholder="Название задачи"
               value={title}
               onChange={(e) => setTitle(e.currentTarget.value)}
@@ -169,7 +170,7 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
               variant="unstyled"
               styles={{
                 input: {
-                  fontWeight: 600,
+                  fontWeight: 500,
                   fontSize: '18px',
                   borderBottom: '1px solid var(--mantine-color-default-border)',
                   borderRadius: 0,
@@ -178,19 +179,13 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
               }}
             />
             <Textarea
-              placeholder="Добавить описание..."
+              size="xs"
+              placeholder="Описание"
               value={description}
               onChange={handleDescriptionChange}
               autosize
-              minRows={6}
-              maxRows={14}
-              variant="filled"
-              size="sm"
-              styles={{
-                input: {
-                  backgroundColor: 'var(--mantine-color-default-hover)',
-                },
-              }}
+              minRows={4}
+              maxRows={20}
             />
             {descriptionDirty && (
               <Group gap="xs" justify="flex-end">
@@ -202,111 +197,80 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
         </Grid.Col>
 
         {/* Right sidebar: settings */}
-        <Grid.Col span={5}>
-          <Stack
-            gap={0}
-            style={{
-              border: '1px solid var(--mantine-color-default-border)',
-              borderRadius: 'var(--mantine-radius-md)',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Priority */}
-            <Group
-              gap="sm"
-              px="sm"
-              py="xs"
-              style={{ cursor: 'pointer' }}
-            >
-              <IconFlag size={16} color="var(--mantine-color-dimmed)" />
-              <Box style={{ flex: 1 }}>
-                <Select
-                  value={priority}
-                  onChange={handlePriorityChange}
-                  data={PRIORITY_OPTIONS}
-                  variant="unstyled"
-                  size="sm"
-                  styles={{ input: { fontWeight: 500 } }}
-                />
-              </Box>
-            </Group>
-
-            <Divider />
-
-            {/* Due date */}
-            <Box px="sm" py="xs">
+        <Grid.Col span={4}>
+          <Stack gap="sm">
+            <Select
+              size="xs"
+              label="Приоритет"
+              value={priority}
+              onChange={handlePriorityChange}
+              data={[
+                { value: '4', label: '🔴 Важно и срочно' },
+                { value: '3', label: '🟠 Не важно и срочно' },
+                { value: '2', label: '🔵 Важно, не срочно' },
+                { value: '1', label: '⚪ Не важно, не срочно' },
+                { value: '0', label: 'Без приоритета' },
+              ]}
+            />
+            <Box>
+              <Text size="xs" fw={500} mb={4}>Срок</Text>
               <DatePickerMenu
                 value={dueDate}
                 onChange={handleDateChange}
                 recurrence={recurrence}
                 onRecurrenceChange={handleRecurrenceChange}
               >
-                <Group gap="sm" style={{ cursor: 'pointer' }} wrap="nowrap">
-                  <IconCalendar size={16} color="var(--mantine-color-dimmed)" />
-                  <Text size="sm" fw={500} c={dueDate ? undefined : 'dimmed'}>
-                    {dueDate ? dayjs(dueDate).format('D MMMM') : 'Срок'}
-                  </Text>
+                <Button
+                  size="xs"
+                  variant="default"
+                  leftSection={<IconCalendar size={16}/>}
+                  fullWidth
+                  styles={{ inner: { justifyContent: 'flex-start' } }}
+                >
+                  {dueDate ? dayjs(dueDate).format('D MMM') : 'Выбрать дату'}
                   {recurrence && (
-                    <>
-                      <IconRepeat size={14} color="var(--mantine-color-blue-5)" />
-                      <Text size="xs" c="blue">
+                    <Group gap={4} ml={8}>
+                      <IconRepeat size={14} color="var(--mantine-color-blue-5)"/>
+                      <Text size="xs" c="blue" component="span">
                         {getRecurrenceLabel(recurrence)}
                       </Text>
-                    </>
+                    </Group>
                   )}
-                </Group>
+                </Button>
               </DatePickerMenu>
             </Box>
-
-            <Divider />
-
-            {/* Project */}
-            <Group gap="sm" px="sm" py="xs">
-              <IconHash
-                size={16}
-                color={selectedProject?.color || 'var(--mantine-color-dimmed)'}
-              />
-              <Box style={{ flex: 1 }}>
-                <Select
-                  value={projectId}
-                  onChange={handleProjectChange}
-                  data={projectData}
-                  clearable
-                  placeholder="Проект"
-                  variant="unstyled"
-                  size="sm"
-                  styles={{ input: { fontWeight: 500 } }}
-                  renderOption={({ option }) => {
-                    const p = projects.find((pr) => pr.id === option.value);
-                    return (
-                      <Group gap={6} wrap="nowrap">
-                        <IconHash size={14} color={p?.color} style={{ flexShrink: 0 }} />
-                        <span>{option.label}</span>
-                      </Group>
-                    );
-                  }}
-                />
-              </Box>
-            </Group>
-
-            <Divider />
-
-            {/* Goal */}
-            <Group gap="sm" px="sm" py="xs">
-              <IconTarget size={16} color="var(--mantine-color-dimmed)" />
-              <Box style={{ flex: 1 }}>
-                <Select
-                  value={goalId}
-                  onChange={handleGoalChange}
-                  data={goals.map((g) => ({ value: g.id, label: g.title }))}
-                  clearable
-                  placeholder="Цель"
-                  variant="unstyled"
-                  size="sm"
-                  styles={{ input: { fontWeight: 500 } }}
-                />
-              </Box>
-            </Group>
+            <Select
+              size="xs"
+              label="Проект"
+              value={projectId}
+              onChange={handleProjectChange}
+              data={projects.map((p) => ({ value: p.id, label: p.title }))}
+              clearable
+              placeholder="Без проекта"
+              leftSection={
+                selectedProject
+                  ? <IconHash size={14} color={selectedProject.color} />
+                  : <IconHash size={14} color="var(--mantine-color-dimmed)" />
+              }
+              renderOption={({ option }) => {
+                const p = projects.find((pr) => pr.id === option.value);
+                return (
+                  <Group gap={6} wrap="nowrap">
+                    <IconHash size={14} color={p?.color} style={{ flexShrink: 0 }} />
+                    <span>{option.label}</span>
+                  </Group>
+                );
+              }}
+            />
+            <Select
+              size="xs"
+              label="Цель"
+              value={goalId}
+              onChange={handleGoalChange}
+              data={goals.map((g) => ({ value: g.id, label: g.title }))}
+              clearable
+              placeholder="Без цели"
+            />
           </Stack>
         </Grid.Col>
       </Grid>
