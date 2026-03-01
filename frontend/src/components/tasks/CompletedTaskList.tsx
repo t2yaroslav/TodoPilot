@@ -48,9 +48,11 @@ function groupTasksByDate(tasks: Task[]): DateGroup[] {
 
 interface Props {
   filterParams?: Record<string, unknown>;
+  sectionTitle?: string;
+  sectionIcon?: React.ReactNode;
 }
 
-export function CompletedTaskList({ filterParams }: Props) {
+export function CompletedTaskList({ filterParams, sectionTitle, sectionIcon }: Props) {
   const { tasks, loading, fetchTasks } = useTaskStore();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
@@ -79,7 +81,7 @@ export function CompletedTaskList({ filterParams }: Props) {
         </Text>
       )}
 
-      <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} filterParams={filterParams} />
+      <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} filterParams={filterParams} sectionTitle={sectionTitle} sectionIcon={sectionIcon} />
     </Stack>
   );
 }

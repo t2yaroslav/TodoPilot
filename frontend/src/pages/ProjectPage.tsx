@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Group, Title, ColorSwatch } from '@mantine/core';
+import { IconHash } from '@tabler/icons-react';
 import { useTaskStore } from '@/stores/taskStore';
 import { TaskList } from '@/components/tasks/TaskList';
 import { AIFunctionMenu } from '@/components/ai/AIFunctionMenu';
@@ -23,7 +24,13 @@ export function ProjectPage() {
         </Group>
         <AIFunctionMenu />
       </Group>
-      {id && <TaskList filterParams={{ project_id: id, completed: false }} />}
+      {id && (
+        <TaskList
+          filterParams={{ project_id: id, completed: false }}
+          sectionTitle={project?.title}
+          sectionIcon={project ? <IconHash size={18} color={project.color} /> : undefined}
+        />
+      )}
     </>
   );
 }

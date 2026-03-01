@@ -1,4 +1,5 @@
 import { Group, Title, Text } from '@mantine/core';
+import { IconCalendarEvent } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 import { PriorityTaskList } from '@/components/tasks/PriorityTaskList';
@@ -16,7 +17,12 @@ export function TodayPage() {
         </div>
         <AIFunctionMenu />
       </Group>
-      <PriorityTaskList filterParams={{ due_today: true, completed: false }} defaultDueDate={new Date()} />
+      <PriorityTaskList
+        filterParams={{ due_today: true, completed: false }}
+        defaultDueDate={new Date()}
+        sectionTitle="Сегодня"
+        sectionIcon={<IconCalendarEvent size={18} />}
+      />
     </>
   );
 }

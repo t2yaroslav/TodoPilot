@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TextInput, Select, Group, Button, Box } from '@mantine/core';
-import { IconCalendar, IconTarget } from '@tabler/icons-react';
+import { IconCalendar, IconHash } from '@tabler/icons-react';
 import { useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
@@ -24,8 +24,6 @@ interface Props {
   defaultProjectId?: string;
   defaultPriority?: number;
   defaultGoalId?: string;
-  size?: 'xs' | 'sm';
-  showGoal?: boolean;
 }
 
 export function InlineAddTask({
@@ -35,8 +33,6 @@ export function InlineAddTask({
   defaultProjectId,
   defaultPriority = 0,
   defaultGoalId,
-  size = 'xs',
-  showGoal = false,
 }: Props) {
   const { addTask, projects, goals, fetchGoals, refreshAllCounts } = useTaskStore();
   const [title, setTitle] = useState('');
@@ -47,8 +43,8 @@ export function InlineAddTask({
   const [recurrence, setRecurrence] = useState<string | null>(null);
 
   useEffect(() => {
-    if (showGoal && goals.length === 0) fetchGoals();
-  }, [showGoal]);
+    if (goals.length === 0) fetchGoals();
+  }, []);
 
   useEffect(() => {
     setDueDate(defaultDueDate || null);
@@ -82,6 +78,13 @@ export function InlineAddTask({
     if (e.key === 'Escape') onClose();
   };
 
+  const selectedProject = projectId ? projects.find((p) => p.id === projectId) : null;
+
+  const projectData = projects.map((p) => ({
+    value: p.id,
+    label: p.title,
+  }));
+
   return (
     <Box>
       <TextInput
@@ -91,15 +94,15 @@ export function InlineAddTask({
         onKeyDown={handleKeyDown}
         autoFocus
         mb="xs"
-        size={size}
+        size="xs"
       />
-      <Group gap="xs">
+      <Group gap="xs" wrap="nowrap">
         <Select
-          size={size}
+          size="xs"
           value={priority}
           onChange={(v) => setPriority(v || '0')}
           data={PRIORITY_OPTIONS}
-          w={size === 'xs' ? 160 : 180}
+          w={160}
         />
         <DatePickerMenu
           value={dueDate}
@@ -108,40 +111,41 @@ export function InlineAddTask({
           onRecurrenceChange={setRecurrence}
         >
           <Button
-            size={size}
+            size="xs"
             variant="default"
-            leftSection={<IconCalendar size={size === 'xs' ? 14 : 16} />}
+            leftSection={<IconCalendar size={14} />}
           >
             {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
           </Button>
         </DatePickerMenu>
         {projects.length > 0 && (
           <Select
-            size={size}
+            size="xs"
             placeholder="Проект"
             value={projectId}
             onChange={setProjectId}
-            data={projects.map((p) => ({ value: p.id, label: p.title }))}
+            data={projectData}
             clearable
-            w={size === 'xs' ? 140 : 160}
+            w={160}
+            leftSection={
+              selectedProject
+                ? <IconHash size={14} color={selectedProject.color} />
+                : <IconHash size={14} color="var(--mantine-color-dimmed)" />
+            }
+            renderOption={({ option }) => {
+              const p = projects.find((pr) => pr.id === option.value);
+              return (
+                <Group gap={6} wrap="nowrap">
+                  <IconHash size={14} color={p?.color} style={{ flexShrink: 0 }} />
+                  <span>{option.label}</span>
+                </Group>
+              );
+            }}
           />
         )}
-        {showGoal && goals.length > 0 && (
-          <Select
-            size={size}
-            placeholder="Цель"
-            value={goalId}
-            onChange={setGoalId}
-            data={goals.map((g) => ({ value: g.id, label: g.title }))}
-            leftSection={<IconTarget size={14} />}
-            clearable
-            w={size === 'xs' ? 140 : 160}
-          />
-        )}
-      </Group>
-      <Group gap="xs" mt="xs">
-        <Button size={size} variant="default" onClick={onClose}>Отмена</Button>
-        <Button size={size} onClick={handleAdd}>Добавить задачу</Button>
+        <Box style={{ flex: 1 }} />
+        <Button size="xs" variant="default" onClick={onClose}>Отмена</Button>
+        <Button size="xs" onClick={handleAdd}>Добавить задачу</Button>
       </Group>
     </Box>
   );

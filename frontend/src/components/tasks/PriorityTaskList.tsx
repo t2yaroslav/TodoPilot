@@ -17,9 +17,11 @@ const PRIORITY_GROUPS = [
 interface Props {
   filterParams?: Record<string, unknown>;
   defaultDueDate?: Date;
+  sectionTitle?: string;
+  sectionIcon?: React.ReactNode;
 }
 
-export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
+export function PriorityTaskList({ filterParams, defaultDueDate, sectionTitle, sectionIcon }: Props) {
   const { tasks, loading, fetchTasks } = useTaskStore();
   const [addingForPriority, setAddingForPriority] = useState<number | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -106,7 +108,7 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
                 style={{ cursor: 'pointer', opacity: 0.5 }}
                 onClick={() => setAddingForPriority(group.priority)}
               >
-                <IconPlus size={14}/>
+                <IconPlus size={14} />
                 <Text size="xs">Добавить задачу</Text>
               </Group>
             )}
@@ -122,7 +124,7 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
           <Button
             variant="subtle"
             size="xs"
-            leftSection={<IconPlus size={14}/>}
+            leftSection={<IconPlus size={14} />}
             onClick={() => setAddingForPriority(0)}
           >
             Добавить задачу
@@ -134,6 +136,8 @@ export function PriorityTaskList({ filterParams, defaultDueDate }: Props) {
         task={editingTask}
         onClose={() => setEditingTask(null)}
         filterParams={filterParams}
+        sectionTitle={sectionTitle}
+        sectionIcon={sectionIcon}
       />
     </Stack>
   );

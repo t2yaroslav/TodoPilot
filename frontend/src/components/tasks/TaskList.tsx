@@ -10,9 +10,11 @@ interface Props {
   filterParams?: Record<string, unknown>;
   showAddButton?: boolean;
   defaultDueDate?: Date;
+  sectionTitle?: string;
+  sectionIcon?: React.ReactNode;
 }
 
-export function TaskList({ filterParams, showAddButton = true, defaultDueDate }: Props) {
+export function TaskList({ filterParams, showAddButton = true, defaultDueDate, sectionTitle, sectionIcon }: Props) {
   const { tasks, loading, fetchTasks } = useTaskStore();
   const [adding, setAdding] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -77,7 +79,13 @@ export function TaskList({ filterParams, showAddButton = true, defaultDueDate }:
         </Text>
       )}
 
-      <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} filterParams={filterParams} />
+      <TaskEditModal
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        filterParams={filterParams}
+        sectionTitle={sectionTitle}
+        sectionIcon={sectionIcon}
+      />
     </Stack>
   );
 }

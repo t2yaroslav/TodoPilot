@@ -10,14 +10,12 @@ interface Props {
 
 export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectId }: Props) {
   return (
-    <Modal opened={opened} onClose={onClose} title="Быстрое добавление задачи" size={800}>
+    <Modal opened={opened} onClose={onClose} title="Добавить задачу" size={700}>
       <InlineAddTask
         onClose={onClose}
         onAdded={onClose}
         defaultDueDate={defaultDueDate}
         defaultProjectId={defaultProjectId}
-        size="sm"
-        showGoal
       />
     </Modal>
   );
