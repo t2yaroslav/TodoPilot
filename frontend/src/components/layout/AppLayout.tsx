@@ -39,6 +39,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore, Project } from '@/stores/taskStore';
 import { QuickAddModal } from '@/components/tasks/QuickAddModal';
+import classes from './AppLayout.module.css';
 
 function ProjectNavItem({ project, active, taskCount, onNavigate }: {
   project: Project;
@@ -280,7 +281,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               style={{ position: 'absolute', top: 0, left: 0, zIndex: 10 }}
               title="Свернуть/развернуть сайдбар"
             />
-            <Box pl={40} maw={960} mx="auto">{children}</Box>
+            <Box maw={960} mx="auto" className={classes.content}>{children}</Box>
           </Box>
         </AppShell.Main>
       </AppShell>

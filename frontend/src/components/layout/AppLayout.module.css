@@ -1,0 +1,3 @@
+.content > *:first-child {
+  padding-left: 40px;
+}
