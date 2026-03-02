@@ -13,7 +13,6 @@ import {
   IconBrain,
   IconMessageChatbot,
   IconSparkles,
-  IconPhoto,
   IconMenu2,
   IconX,
 } from '@tabler/icons-react';
@@ -35,15 +34,6 @@ const aiIcons = [
   <IconChartLine size={20} />,
   <IconMessageChatbot size={20} />,
 ];
-
-function ImagePlaceholder({ text, small }: { text: string; small?: boolean }) {
-  return (
-    <div className={small ? s.imagePlaceholderSmall : s.imagePlaceholder}>
-      <IconPhoto size={small ? 32 : 48} style={{ opacity: 0.25 }} />
-      <span>{text}</span>
-    </div>
-  );
-}
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -166,7 +156,9 @@ export function LandingPage() {
           </Button>
         </div>
 
-        <ImagePlaceholder text="[Скриншот главного экрана приложения — вид «Сегодня» со списком задач, боковой панелью с проектами и навигацией]" />
+        <div className={s.sectionImage}>
+          <img src="/landing/hero.svg" alt="TodoPilot — вид «Сегодня» со списком задач" />
+        </div>
       </section>
 
       {/* ── Features ── */}
@@ -187,7 +179,9 @@ export function LandingPage() {
             ))}
           </div>
 
-          <ImagePlaceholder text="[Скриншот экрана проектов — список проектов с цветовыми метками и счётчиками задач]" />
+          <div className={s.sectionImage}>
+            <img src="/landing/features.svg" alt="TodoPilot — экран проектов" />
+          </div>
         </section>
       </div>
 
@@ -208,7 +202,9 @@ export function LandingPage() {
           ))}
         </div>
 
-        <ImagePlaceholder text="[Скриншот экрана целей — годовые и квартальные цели с прогресс-барами и привязанными проектами]" />
+        <div className={s.sectionImage}>
+          <img src="/landing/goals.svg" alt="TodoPilot — экран целей с прогресс-барами" />
+        </div>
       </section>
 
       {/* ── AI ── */}
@@ -230,7 +226,9 @@ export function LandingPage() {
               ))}
             </div>
 
-            <ImagePlaceholder text="[Скриншот AI-чата — диалог с AI-ассистентом, где AI предлагает план на день и рекомендации по задачам]" small />
+            <div className={s.sectionImageSmall}>
+              <img src="/landing/ai-chat.svg" alt="TodoPilot — AI-чат с рекомендациями" />
+            </div>
           </div>
         </section>
       </div>
