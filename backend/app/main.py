@@ -17,7 +17,7 @@ from .routers import ai, ai_tasks, auth, goals, projects, stats, survey, tasks
 
 DEV_MODE = os.getenv("FASTAPI_ENV", "development") != "production"
 
-# LLM debug logging — activate with LLM_DEBUG=true in .env
+# LLM debug logging - activate with LLM_DEBUG=true in .env
 if settings.llm_debug:
     _llm_logger = logging.getLogger("todopilot.llm")
     _llm_logger.setLevel(logging.DEBUG)

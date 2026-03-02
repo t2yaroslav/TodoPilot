@@ -319,7 +319,7 @@ export function WeeklySurveyWizard() {
           </Stack>
         </Paper>
 
-        {/* AI status / regenerate button — outside the list box */}
+        {/* AI status / regenerate button - outside the list box */}
         {stepConfig.hasAI && (
           generating ? (
             <Group gap="xs" justify="center">

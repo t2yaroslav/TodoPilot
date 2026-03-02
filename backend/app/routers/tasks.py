@@ -127,7 +127,7 @@ async def list_tasks(
     if parent_task_id:
         q = q.where(Task.parent_task_id == parent_task_id)
     else:
-        q = q.where(Task.parent_task_id == None)  # noqa: E711 — top-level only by default
+        q = q.where(Task.parent_task_id == None)  # noqa: E711 - top-level only by default
     q = q.order_by(Task.position, Task.created_at)
     result = await db.execute(q)
     return result.scalars().all()

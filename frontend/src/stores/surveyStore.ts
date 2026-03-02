@@ -135,7 +135,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
   generateForStep: async (step: number, force = false) => {
     const state = get();
 
-    // Step 2 (difficulties) — never AI-generated
+    // Step 2 (difficulties) - never AI-generated
     if (step === 2) return;
 
     const currentDeps = depsKey(state, step);

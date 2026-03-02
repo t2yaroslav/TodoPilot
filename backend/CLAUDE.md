@@ -1,13 +1,13 @@
-# Backend — FastAPI + SQLAlchemy
+# Backend - FastAPI + SQLAlchemy
 
 ## Stack
 Python 3.12, FastAPI, SQLAlchemy 2 (async + asyncpg), Alembic, Pydantic Settings, LiteLLM, python-jose (JWT), aiosmtplib
 
 ## Entry Point
-`app/main.py` — CORS setup, lifespan (db tables creation), error handlers, router registration.
+`app/main.py` - CORS setup, lifespan (db tables creation), error handlers, router registration.
 
 ## Config
-`app/config.py` — Pydantic Settings. Env vars: DATABASE_URL, JWT_SECRET/ALGORITHM/EXPIRE_MINUTES, SMTP_*, LLM_MODEL/API_KEY/API_BASE.
+`app/config.py` - Pydantic Settings. Env vars: DATABASE_URL, JWT_SECRET/ALGORITHM/EXPIRE_MINUTES, SMTP_*, LLM_MODEL/API_KEY/API_BASE.
 
 ## DB Models (`app/models.py`)
 - `User`: id, email, name, profile_text (AI psychoportrait), settings (JSONB), created_at

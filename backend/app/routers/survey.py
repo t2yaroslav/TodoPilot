@@ -104,7 +104,7 @@ async def survey_status(
             already_dismissed=True,
         )
 
-    # Survey exists but not completed/dismissed — show it with draft data
+    # Survey exists but not completed/dismissed - show it with draft data
     return SurveyStatusOut(should_show=True, survey_id=survey.id, draft=survey)
 
 

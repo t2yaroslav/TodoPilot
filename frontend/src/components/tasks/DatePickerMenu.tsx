@@ -68,7 +68,7 @@ function getQuickOptions(): QuickOption[] {
     },
   ];
 
-  // "Позже на этой неделе" — show only Mon-Wed (so there's still "later" this week)
+  // "Позже на этой неделе" - show only Mon-Wed (so there's still "later" this week)
   if (dayOfWeek >= 1 && dayOfWeek <= 3) {
     const laterDay = dayOfWeek + 2; // 2 days later
     const laterDate = dayjs().day(Math.min(laterDay, 5)); // cap at Friday
@@ -81,7 +81,7 @@ function getQuickOptions(): QuickOption[] {
     });
   }
 
-  // "На выходных" — Saturday, only show if it's a weekday
+  // "На выходных" - Saturday, only show if it's a weekday
   if (dayOfWeek >= 1 && dayOfWeek <= 5) {
     const saturday = getNextDayOfWeek(6);
     options.push({
@@ -93,7 +93,7 @@ function getQuickOptions(): QuickOption[] {
     });
   }
 
-  // "На следующей неделе" — next Monday
+  // "На следующей неделе" - next Monday
   const nextMonday = dayjs().add(1, 'week').startOf('week').add(1, 'day');
   options.push({
     label: 'На следующей неделе',

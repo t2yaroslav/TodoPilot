@@ -8,7 +8,7 @@ AI-powered task manager with productivity analytics. Combines Todoist-like minim
 |-------|-------------|
 | **Frontend** | React 18, Vite 6, TypeScript 5, Mantine UI v7, Zustand 5, React Router v6, Recharts, Tabler Icons |
 | **Backend** | Python 3.12, FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic Settings |
-| **AI** | LiteLLM (OpenAI / Claude / Deepseek / Ollama — switch via env var) |
+| **AI** | LiteLLM (OpenAI / Claude / Deepseek / Ollama - switch via env var) |
 | **Database** | PostgreSQL 18 |
 | **Auth** | Passwordless email code + JWT |
 | **Deploy** | Docker Compose (nginx + frontend + backend + postgres) |
@@ -44,7 +44,7 @@ docker compose exec backend alembic upgrade head
 
 ## Local Development
 
-### Option A — Postgres in Docker, backend + frontend on host
+### Option A - Postgres in Docker, backend + frontend on host
 
 ```bash
 # Start only Postgres
@@ -62,9 +62,9 @@ npm install
 npm run dev
 ```
 
-> `.env` uses `DATABASE_URL` with `localhost` — works as-is for host access.
+> `.env` uses `DATABASE_URL` with `localhost` - works as-is for host access.
 
-### Option B — Everything in Docker with hot reload
+### Option B - Everything in Docker with hot reload
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
@@ -85,10 +85,10 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build fronte
 # Rebuild and restart only backend
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build backend
 
-# Rebuild both (DB data is preserved — pgdata volume is not affected)
+# Rebuild both (DB data is preserved - pgdata volume is not affected)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build backend frontend
 
-# Full rebuild from scratch (still preserves DB — only removes container images)
+# Full rebuild from scratch (still preserves DB - only removes container images)
 docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache backend frontend
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```

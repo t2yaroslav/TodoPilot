@@ -40,7 +40,7 @@ const translations = {
         {
           title: 'Умные представления',
           description:
-            'Сегодня, Входящие, Предстоящие, Завершённые — разные способы увидеть ваши задачи.',
+            'Сегодня, Входящие, Предстоящие, Завершённые - разные способы увидеть ваши задачи.',
         },
         {
           title: 'Аналитика',
@@ -56,17 +56,17 @@ const translations = {
     },
     howItWorks: {
       title: 'Начать просто',
-      subtitle: 'Три шага — и вы организованы',
+      subtitle: 'Три шага - и вы организованы',
       steps: [
         {
           step: '1',
           title: 'Зарегистрируйтесь',
-          description: 'Введите email — и вы в системе. Никаких паролей, только код подтверждения.',
+          description: 'Введите email - и вы в системе. Никаких паролей, только код подтверждения.',
         },
         {
           step: '2',
           title: 'Добавьте задачи',
-          description: 'Создайте задачи, проекты и цели. Или расскажите AI о своих планах — он структурирует их за вас.',
+          description: 'Создайте задачи, проекты и цели. Или расскажите AI о своих планах - он структурирует их за вас.',
         },
         {
           step: '3',
@@ -86,7 +86,7 @@ const translations = {
         },
         {
           title: 'Brain Dump',
-          description: 'Выгрузите все мысли текстом — AI разберёт их на задачи и проекты.',
+          description: 'Выгрузите все мысли текстом - AI разберёт их на задачи и проекты.',
         },
         {
           title: 'Анализ продуктивности',
@@ -158,7 +158,7 @@ const translations = {
         {
           title: 'Smart views',
           description:
-            'Today, Inbox, Upcoming, Completed — different ways to see your tasks.',
+            'Today, Inbox, Upcoming, Completed - different ways to see your tasks.',
         },
         {
           title: 'Analytics',
@@ -179,12 +179,12 @@ const translations = {
         {
           step: '1',
           title: 'Sign up',
-          description: 'Enter your email and you\'re in. No passwords — just a confirmation code.',
+          description: 'Enter your email and you\'re in. No passwords - just a confirmation code.',
         },
         {
           step: '2',
           title: 'Add tasks',
-          description: 'Create tasks, projects, and goals. Or tell the AI about your plans — it\'ll structure them for you.',
+          description: 'Create tasks, projects, and goals. Or tell the AI about your plans - it\'ll structure them for you.',
         },
         {
           step: '3',
@@ -204,7 +204,7 @@ const translations = {
         },
         {
           title: 'Brain Dump',
-          description: 'Dump all your thoughts as text — AI will sort them into tasks and projects.',
+          description: 'Dump all your thoughts as text - AI will sort them into tasks and projects.',
         },
         {
           title: 'Productivity analysis',

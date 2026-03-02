@@ -2,13 +2,13 @@
  * Shared recurrence utilities: labels, options, and formatting.
  *
  * Recurrence format:
- *   - "daily"            — every day
- *   - "weekly"           — every week (same weekday)
- *   - "weekly:1,3"       — every Monday and Wednesday  (ISO weekday: 1=Mon … 7=Sun)
- *   - "biweekly"         — every 2 weeks
- *   - "monthly"          — every month (same day-of-month)
- *   - "monthly:1,15"     — 1st and 15th of every month
- *   - "yearly"           — every year
+ *   - "daily"            - every day
+ *   - "weekly"           - every week (same weekday)
+ *   - "weekly:1,3"       - every Monday and Wednesday  (ISO weekday: 1=Mon … 7=Sun)
+ *   - "biweekly"         - every 2 weeks
+ *   - "monthly"          - every month (same day-of-month)
+ *   - "monthly:1,15"     - 1st and 15th of every month
+ *   - "yearly"           - every year
  */
 
 const DAY_NAMES_SHORT: Record<number, string> = {
