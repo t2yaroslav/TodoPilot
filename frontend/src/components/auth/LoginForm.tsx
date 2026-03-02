@@ -34,7 +34,7 @@ export function LoginForm() {
     try {
       const { data } = await verifyCode(email, code);
       setToken(data.access_token);
-      window.location.href = '/';
+      window.location.href = '/today';
     } catch {
       notifications.show({ title: 'Ошибка', message: 'Неверный код', color: 'red' });
     } finally {

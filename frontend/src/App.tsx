@@ -6,6 +6,7 @@ import { useSurveyStore } from '@/stores/surveyStore';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { SurveyPrompt } from '@/components/survey/SurveyPrompt';
 import { WeeklySurveyWizard } from '@/components/survey/WeeklySurveyWizard';
+import { LandingPage } from '@/pages/LandingPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { TodayPage } from '@/pages/TodayPage';
 import { InboxPage } from '@/pages/InboxPage';
@@ -52,6 +53,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/*"

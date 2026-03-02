@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 export function LoginPage() {
   const { token } = useAuthStore();
-  if (token) return <Navigate to="/" replace />;
+  if (token) return <Navigate to="/today" replace />;
 
   return (
     <Center h="100vh" bg="var(--mantine-color-gray-0)">
