@@ -166,7 +166,7 @@ export function LandingPage() {
           </Button>
         </div>
 
-        <ImagePlaceholder text={t.heroImage} />
+        <ImagePlaceholder text="[Скриншот главного экрана приложения — вид «Сегодня» со списком задач, боковой панелью с проектами и навигацией]" />
       </section>
 
       {/* ── Features ── */}
@@ -187,7 +187,7 @@ export function LandingPage() {
             ))}
           </div>
 
-          <ImagePlaceholder text={t.featuresImage} />
+          <ImagePlaceholder text="[Скриншот экрана проектов — список проектов с цветовыми метками и счётчиками задач]" />
         </section>
       </div>
 
@@ -208,7 +208,7 @@ export function LandingPage() {
           ))}
         </div>
 
-        <ImagePlaceholder text={t.stepsImage} />
+        <ImagePlaceholder text="[Скриншот экрана целей — годовые и квартальные цели с прогресс-барами и привязанными проектами]" />
       </section>
 
       {/* ── AI ── */}
@@ -230,7 +230,7 @@ export function LandingPage() {
               ))}
             </div>
 
-            <ImagePlaceholder text={t.aiImage} small />
+            <ImagePlaceholder text="[Скриншот AI-чата — диалог с AI-ассистентом, где AI предлагает план на день и рекомендации по задачам]" small />
           </div>
         </section>
       </div>

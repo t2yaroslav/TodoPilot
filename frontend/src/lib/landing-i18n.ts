@@ -18,7 +18,6 @@ const translations = {
       cta: 'Начать бесплатно',
       demo: 'Посмотреть демо',
     },
-    heroImage: '[Скриншот главного экрана приложения — вид "Сегодня" со списком задач, боковой панелью с проектами и навигацией]',
     features: {
       title: 'Всё для продуктивности',
       subtitle: 'Простые, но мощные инструменты для управления задачами и проектами',
@@ -55,7 +54,6 @@ const translations = {
         },
       ],
     },
-    featuresImage: '[Скриншот экрана проектов — список проектов с цветовыми метками и счётчиками задач]',
     howItWorks: {
       title: 'Начать просто',
       subtitle: 'Три шага — и вы организованы',
@@ -77,7 +75,6 @@ const translations = {
         },
       ],
     },
-    stepsImage: '[Скриншот экрана целей — годовые и квартальные цели с прогресс-барами и привязанными проектами]',
     ai: {
       title: 'AI-помощник внутри',
       subtitle:
@@ -101,7 +98,6 @@ const translations = {
         },
       ],
     },
-    aiImage: '[Скриншот AI-чата — диалог с AI-ассистентом, где AI предлагает план на день и рекомендации по задачам]',
     cta: {
       title: 'Готовы стать продуктивнее?',
       subtitle: 'Присоединяйтесь к TodoPilot и начните управлять задачами по-умному.',
@@ -140,7 +136,6 @@ const translations = {
       cta: 'Get started free',
       demo: 'Watch demo',
     },
-    heroImage: '[Screenshot of the main app screen — "Today" view with task list, sidebar with projects and navigation]',
     features: {
       title: 'Everything for productivity',
       subtitle: 'Simple yet powerful tools for task and project management',
@@ -177,7 +172,6 @@ const translations = {
         },
       ],
     },
-    featuresImage: '[Screenshot of the projects screen — list of projects with color labels and task counters]',
     howItWorks: {
       title: 'Easy to start',
       subtitle: 'Three steps to get organized',
@@ -199,7 +193,6 @@ const translations = {
         },
       ],
     },
-    stepsImage: '[Screenshot of goals screen — yearly and quarterly goals with progress bars and linked projects]',
     ai: {
       title: 'AI assistant built in',
       subtitle:
@@ -223,7 +216,6 @@ const translations = {
         },
       ],
     },
-    aiImage: '[Screenshot of AI chat — dialogue with AI assistant suggesting a day plan and task recommendations]',
     cta: {
       title: 'Ready to be more productive?',
       subtitle: 'Join TodoPilot and start managing tasks the smart way.',
