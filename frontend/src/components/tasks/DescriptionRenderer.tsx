@@ -1,4 +1,3 @@
-import ReactMarkdown from 'react-markdown';
 import { TypographyStylesProvider } from '@mantine/core';
 
 interface Props {
@@ -7,19 +6,52 @@ interface Props {
   size?: 'xs' | 'sm' | 'md';
 }
 
+const URL_REGEX = /(https?:\/\/[^\s<]+)/g;
+
+function prepareHtml(content: string): string {
+  if (/<[a-z][\s\S]*>/i.test(content)) {
+    return content;
+  }
+  // Plain text fallback: escape HTML, auto-linkify URLs, preserve newlines
+  const escaped = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const linkified = escaped.replace(
+    URL_REGEX,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+  );
+  return linkified
+    .split('\n')
+    .map((line) => `<p>${line || '<br>'}</p>`)
+    .join('');
+}
+
 export function DescriptionRenderer({ content, lineClamp, size = 'sm' }: Props) {
   const fontSize = size === 'xs' ? 12 : size === 'sm' ? 14 : 16;
+  const html = prepareHtml(content);
+
+  const handleClick = (e: React.MouseEvent) => {
+    const link = (e.target as HTMLElement).closest('a');
+    if (link && link.href) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.open(link.href, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <TypographyStylesProvider
-      style={{
-        ...(lineClamp ? {
-          display: '-webkit-box',
-          WebkitLineClamp: lineClamp,
-          WebkitBoxOrient: 'vertical' as const,
-          overflow: 'hidden',
-        } : {}),
-      }}
+      style={
+        lineClamp
+          ? {
+              display: '-webkit-box',
+              WebkitLineClamp: lineClamp,
+              WebkitBoxOrient: 'vertical' as const,
+              overflow: 'hidden',
+            }
+          : undefined
+      }
       styles={{
         root: {
           fontSize,
@@ -31,23 +63,7 @@ export function DescriptionRenderer({ content, lineClamp, size = 'sm' }: Props) 
         },
       }}
     >
-      <ReactMarkdown
-        components={{
-          a: ({ href, children, ...props }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              {...props}
-            >
-              {children}
-            </a>
-          ),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+      <div onClick={handleClick} dangerouslySetInnerHTML={{ __html: html }} />
     </TypographyStylesProvider>
   );
 }
