@@ -235,7 +235,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <UnstyledButton onClick={() => setProjectsOpen(!projectsOpen)}>
                   <Group gap={4}>
                     {projectsOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
-                    <Text size="xs" fw={700} tt="uppercase" c="dimmed">
+                    <Text size="xs" fw={700} c="dimmed">
                       Мои проекты
                     </Text>
                   </Group>

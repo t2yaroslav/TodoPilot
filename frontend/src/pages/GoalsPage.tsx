@@ -357,7 +357,7 @@ function GoalCard({
           <UnstyledButton onClick={() => setExpanded(!expanded)} mb={4}>
             <Group gap={4}>
               {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+              <Text size="xs" fw={700} c="dimmed">
                 Подцели ({childGoals.length})
               </Text>
             </Group>
@@ -452,7 +452,7 @@ export function GoalsPage() {
     if (goalsToRender.length === 0) return null;
     return (
       <Box>
-        <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb="sm">{title}</Text>
+        <Text size="xs" fw={700} c="dimmed" mb="sm">{title}</Text>
         <Stack gap="md">
           {goalsToRender.map((goal) => {
             const stats = goalStats[goal.id] || { total_tasks: 0, completed_tasks: 0, projects: 0 };
