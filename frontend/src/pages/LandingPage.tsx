@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, useMantineColorScheme } from '@mantine/core';
+import { Button } from '@mantine/core';
 import {
   IconRocket,
   IconChecklist,
@@ -37,17 +37,11 @@ const aiIcons = [
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { setColorScheme } = useMantineColorScheme();
   const [lang, setLang] = useState<LandingLang>(detectLang);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const t = getLandingT(lang);
-
-  // Force light theme on landing
-  useEffect(() => {
-    setColorScheme('light');
-  }, [setColorScheme]);
 
   // Navbar scroll shadow
   useEffect(() => {
@@ -70,7 +64,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className={s.landing}>
+    <div className={s.landing} data-mantine-color-scheme="light">
       {/* ── Navbar ── */}
       <nav className={`${s.navbar} ${scrolled ? s.navbarScrolled : ''}`}>
         <div className={s.navInner}>
