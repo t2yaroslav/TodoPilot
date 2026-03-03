@@ -18,6 +18,7 @@ import {
 } from '@mantine/core';
 import { IconBug, IconBulb, IconMessageCircle, IconPhoto } from '@tabler/icons-react';
 import { useFeedbackStore, FeedbackItem } from '@/stores/feedbackStore';
+import { feedbackUploadUrl } from '@/api/client';
 import dayjs from 'dayjs';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -97,7 +98,7 @@ function FeedbackCard({ item }: { item: FeedbackItem }) {
             </Box>
             <Modal opened={imageOpen} onClose={() => setImageOpen(false)} size="xl" title="Скриншот">
               <Image
-                src={`/api/feedback/uploads/${item.screenshot_path}`}
+                src={feedbackUploadUrl(item.screenshot_path!)}
                 alt="Screenshot"
                 radius="sm"
               />

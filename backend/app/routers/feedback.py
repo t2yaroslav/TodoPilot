@@ -1,8 +1,9 @@
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import FileResponse
+from jose import jwt
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,7 +72,14 @@ async def list_my_feedback(
 
 
 @router.get("/uploads/{filename:path}")
-async def serve_upload(filename: str, _user: User = Depends(get_current_user)):
+async def serve_upload(filename: str, token: str = Query(...)):
+    """Serve uploaded files. Accepts JWT via query param since <img src> can't send headers."""
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        if not payload.get("sub"):
+            raise ValueError()
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
     filepath = Path(settings.upload_dir) / filename
     if not filepath.is_file():
         raise HTTPException(status_code=404, detail="File not found")

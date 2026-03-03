@@ -183,3 +183,7 @@ export const getAdminFeedback = (status?: string) =>
   api.get('/feedback/admin', { params: status ? { status } : undefined });
 export const updateAdminFeedback = (id: string, data: { status?: string; admin_response?: string }) =>
   api.patch(`/feedback/admin/${id}`, data);
+export const feedbackUploadUrl = (screenshotPath: string) => {
+  const token = localStorage.getItem('token');
+  return `/api/feedback/uploads/${screenshotPath}?token=${encodeURIComponent(token || '')}`;
+};
