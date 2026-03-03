@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .config import settings
 from .database import engine
 from .models import Base
-from .routers import ai, ai_tasks, auth, goals, projects, stats, survey, tasks
+from .routers import ai, ai_tasks, auth, feedback, goals, projects, stats, survey, tasks
 
 DEV_MODE = os.getenv("FASTAPI_ENV", "development") != "production"
 
@@ -67,6 +67,10 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(20)"
         ))
+        # Auto-migrate: add is_admin column to users if missing
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false"
+        ))
     yield
 
 
@@ -118,6 +122,7 @@ app.include_router(stats.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(ai_tasks.router, prefix="/api")
 app.include_router(survey.router, prefix="/api")
+app.include_router(feedback.router, prefix="/api")
 
 
 @app.get("/api/health")

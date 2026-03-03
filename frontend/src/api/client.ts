@@ -173,3 +173,17 @@ export const updateProfileFromSurvey = (data: {
   weekly_goals: string[];
 }) => api.post('/survey/update-profile', data);
 export const getSurveyResults = () => api.get('/survey/results');
+
+// Feedback
+export const createFeedback = (data: FormData) => api.post('/feedback', data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
+export const getMyFeedback = () => api.get('/feedback');
+export const getAdminFeedback = (status?: string) =>
+  api.get('/feedback/admin', { params: status ? { status } : undefined });
+export const updateAdminFeedback = (id: string, data: { status?: string; admin_response?: string }) =>
+  api.patch(`/feedback/admin/${id}`, data);
+export const feedbackUploadUrl = (screenshotPath: string) => {
+  const token = localStorage.getItem('token');
+  return `/api/feedback/uploads/${screenshotPath}?token=${encodeURIComponent(token || '')}`;
+};
