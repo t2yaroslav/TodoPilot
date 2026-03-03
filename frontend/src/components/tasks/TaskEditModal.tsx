@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Modal, TextInput, Textarea, Select, Group, Button, Stack, Text, Box, Grid, Divider } from '@mantine/core';
-import { IconCalendar, IconRepeat, IconHash, IconFlag, IconTarget, IconFolder } from '@tabler/icons-react';
+import { Modal, TextInput, Textarea, Select, Group, Button, Stack, Text, Box, Grid, Divider, UnstyledButton } from '@mantine/core';
+import { IconCalendar, IconRepeat, IconHash, IconFlag, IconTarget, IconFolder, IconAlignLeft } from '@tabler/icons-react';
+import { DescriptionRenderer } from './DescriptionRenderer';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { toNoonUTC } from '@/lib/dates';
@@ -36,7 +37,9 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
   const [goalId, setGoalId] = useState<string | null>(null);
   const [recurrence, setRecurrence] = useState<string | null>(null);
   const [descriptionDirty, setDescriptionDirty] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
   const originalDescription = useRef('');
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const titleBlurTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
       setGoalId(task.goal_id);
       setRecurrence(task.recurrence);
       setDescriptionDirty(false);
+      setEditingDescription(false);
       if (goals.length === 0) fetchGoals();
     }
   }, [task]);
@@ -115,6 +119,7 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
     await editTask(task.id, { description: description || null });
     originalDescription.current = description;
     setDescriptionDirty(false);
+    setEditingDescription(false);
     fetchTasks(filterParams);
     refreshAllCounts();
   };
@@ -122,6 +127,12 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
   const handleDescriptionCancel = () => {
     setDescription(originalDescription.current);
     setDescriptionDirty(false);
+    setEditingDescription(false);
+  };
+
+  const startEditingDescription = () => {
+    setEditingDescription(true);
+    setTimeout(() => descriptionRef.current?.focus(), 0);
   };
 
   // Dynamic title: project name with icon, or section name with icon
@@ -168,6 +179,9 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
               onBlur={handleTitleBlur}
               onKeyDown={handleTitleKeyDown}
               variant="unstyled"
+              autosize
+              minRows={1}
+              maxRows={10}
               styles={{
                 input: {
                   fontWeight: 500,
@@ -178,20 +192,37 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
                 },
               }}
             />
-            <Textarea
-              size="xs"
-              placeholder="Описание"
-              value={description}
-              onChange={handleDescriptionChange}
-              autosize
-              minRows={4}
-              maxRows={20}
-            />
-            {descriptionDirty && (
-              <Group gap="xs" justify="flex-end">
-                <Button size="xs" variant="default" onClick={handleDescriptionCancel}>Отмена</Button>
-                <Button size="xs" onClick={handleDescriptionSave}>Сохранить</Button>
-              </Group>
+            {editingDescription ? (
+              <>
+                <Textarea
+                  ref={descriptionRef}
+                  size="xs"
+                  placeholder="Описание (поддерживается Markdown)"
+                  value={description}
+                  onChange={handleDescriptionChange}
+                  autosize
+                  minRows={4}
+                  maxRows={20}
+                />
+                <Group gap="xs" justify="flex-end">
+                  <Button size="xs" variant="default" onClick={handleDescriptionCancel}>Отмена</Button>
+                  <Button size="xs" onClick={handleDescriptionSave}>Сохранить</Button>
+                </Group>
+              </>
+            ) : description ? (
+              <Box
+                onClick={startEditingDescription}
+                style={{ cursor: 'pointer', borderRadius: 4, padding: '4px 0' }}
+              >
+                <DescriptionRenderer content={description} size="sm" />
+              </Box>
+            ) : (
+              <UnstyledButton onClick={startEditingDescription}>
+                <Group gap={6} c="dimmed">
+                  <IconAlignLeft size={16} />
+                  <Text size="sm" c="dimmed">Описание</Text>
+                </Group>
+              </UnstyledButton>
             )}
           </Stack>
         </Grid.Col>
