@@ -26,6 +26,7 @@ class UserOut(BaseModel):
     name: str | None
     profile_text: str | None
     settings: dict | None
+    is_admin: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -128,6 +129,31 @@ class TaskOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# Feedback
+class FeedbackOut(BaseModel):
+    id: UUID
+    user_id: UUID
+    category: str
+    message: str
+    screenshot_path: str | None
+    status: str
+    admin_response: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class FeedbackAdminOut(FeedbackOut):
+    user_email: str = ""
+    user_name: str | None = None
+
+
+class FeedbackAdminUpdate(BaseModel):
+    status: str | None = None
+    admin_response: str | None = None
 
 
 # Stats

@@ -16,6 +16,7 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { UpcomingPage } from '@/pages/UpcomingPage';
 import { GoalsPage } from '@/pages/GoalsPage';
 import { SurveyResultsPage } from '@/pages/SurveyResultsPage';
+import { AdminFeedbackPage } from '@/pages/AdminFeedbackPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuthStore();
@@ -71,6 +72,7 @@ export default function App() {
                   <Route path="/goals" element={<GoalsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/retrospectives" element={<SurveyResultsPage />} />
+                  <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
                 </Routes>
               </AppLayout>
             </ProtectedRoute>

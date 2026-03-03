@@ -35,10 +35,13 @@ import {
   IconTrash,
   IconTarget,
   IconClipboardList,
+  IconMessageReport,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore, Project } from '@/stores/taskStore';
+import { useFeedbackStore } from '@/stores/feedbackStore';
 import { QuickAddModal } from '@/components/tasks/QuickAddModal';
+import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import classes from './AppLayout.module.css';
 
 function ProjectNavItem({ project, active, taskCount, onNavigate }: {
@@ -136,6 +139,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { projects, projectTaskCounts, navCounts, fetchProjects, refreshAllCounts } = useTaskStore();
+  const openFeedback = useFeedbackStore((s) => s.openModal);
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [opened, setOpened] = useState(true);
@@ -191,6 +195,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <Menu.Item leftSection={<IconClipboardList size={14} />} onClick={() => handleNavigate('/retrospectives')}>
                       Обзоры недели
                     </Menu.Item>
+                    {user?.is_admin && (
+                      <Menu.Item leftSection={<IconMessageReport size={14} />} onClick={() => handleNavigate('/admin/feedback')}>
+                        Админ: Обратная связь
+                      </Menu.Item>
+                    )}
                     <Menu.Divider />
                     <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => handleNavigate('/settings')}>
                       Настройки
@@ -269,6 +278,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </Collapse>
             </AppShell.Section>
+
+            <AppShell.Section>
+              <Divider mb="xs" />
+              <NavLink
+                label="Обратная связь"
+                leftSection={<IconMessageReport size={18} />}
+                onClick={openFeedback}
+                variant="light"
+                c="dimmed"
+              />
+            </AppShell.Section>
           </AppShell.Navbar>
         )}
 
@@ -292,6 +312,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         defaultDueDate={location.pathname === '/today' ? new Date() : undefined}
         defaultProjectId={location.pathname.match(/^\/project\/(.+)$/)?.[1] || undefined}
       />
+
+      <FeedbackModal />
     </>
   );
 }

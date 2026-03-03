@@ -84,8 +84,11 @@ async def verify_code(body: AuthVerify, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if not user:
-        user = User(email=body.email)
+        is_admin = bool(settings.admin_email and body.email == settings.admin_email)
+        user = User(email=body.email, is_admin=is_admin)
         db.add(user)
+    elif settings.admin_email and body.email == settings.admin_email and not user.is_admin:
+        user.is_admin = True
 
     await db.commit()
     await db.refresh(user)

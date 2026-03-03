@@ -7,6 +7,7 @@ interface User {
   name: string | null;
   profile_text: string | null;
   settings: Record<string, unknown> | null;
+  is_admin: boolean;
 }
 
 interface AuthState {

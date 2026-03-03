@@ -18,12 +18,14 @@ class User(Base):
     name: Mapped[str | None] = mapped_column(String(255))
     profile_text: Mapped[str | None] = mapped_column(Text)  # AI psychoportrait
     settings: Mapped[dict | None] = mapped_column(JSONB, default=dict)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
     projects = relationship("Project", back_populates="user", cascade="all, delete-orphan")
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
     weekly_surveys = relationship("WeeklySurvey", back_populates="user", cascade="all, delete-orphan")
+    feedbacks = relationship("Feedback", back_populates="user", cascade="all, delete-orphan")
 
 
 class AuthCode(Base):
@@ -113,3 +115,21 @@ class WeeklySurvey(Base):
     )
 
     user = relationship("User", back_populates="weekly_surveys")
+
+
+class Feedback(Base):
+    __tablename__ = "feedback"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    category: Mapped[str] = mapped_column(String(20), nullable=False)  # bug, feature, other
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    screenshot_path: Mapped[str | None] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(20), default="new")  # new, in_progress, resolved
+    admin_response: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    user = relationship("User", back_populates="feedbacks")

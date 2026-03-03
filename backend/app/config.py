@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_api_base: str = ""
     llm_debug: bool = False
+    admin_email: str = ""  # email of admin user (gets is_admin=True on login)
+    upload_dir: str = "uploads"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
