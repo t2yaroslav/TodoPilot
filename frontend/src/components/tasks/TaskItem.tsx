@@ -3,6 +3,7 @@ import { ActionIcon, Checkbox, Group, Text, Box, Tooltip } from '@mantine/core';
 import { IconTrash, IconEdit, IconCalendar, IconHash, IconRepeat } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
+import { DescriptionRenderer } from './DescriptionRenderer';
 import { toNoonUTC } from '@/lib/dates';
 import { getRecurrenceLabel } from '@/lib/recurrence';
 import dayjs from 'dayjs';
@@ -119,9 +120,9 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
             {task.title}
           </Text>
           {task.description && (
-            <Text size="xs" c="dimmed" lineClamp={1} mt={2}>
-              {task.description}
-            </Text>
+            <Box mt={2} c="dimmed">
+              <DescriptionRenderer content={task.description} lineClamp={1} size="xs" />
+            </Box>
           )}
           {(task.due_date || task.recurrence || project) && (
             <Group gap="xs" mt={4} onClick={(e) => e.stopPropagation()}>
