@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Modal, Textarea, Select, Group, Button, Stack, Text, Box, Grid, UnstyledButton, Paper } from '@mantine/core';
 import { IconCalendar, IconRepeat, IconHash, IconAlignLeft } from '@tabler/icons-react';
 import { RichTextEditor, Link } from '@mantine/tiptap';
@@ -217,14 +218,21 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
                 <RichTextEditor
                   editor={editor}
                   styles={{
-                    root: { border: '1px solid var(--mantine-color-default-border)', borderRadius: 4 },
-                    content: { minHeight: 120 },
+                    root: { border: 'none' },
+                    content: {
+                      minHeight: 120,
+                      fontSize: 14,
+                      padding: 0,
+                      '& .tiptap': { padding: 0 },
+                      '& p': { margin: 0 },
+                      '& p + p': { marginTop: 4 },
+                    },
                   }}
                 >
                   <Box onContextMenu={handleEditorContextMenu}>
                     <RichTextEditor.Content />
                   </Box>
-                  {ctxMenu && (
+                  {ctxMenu && createPortal(
                     <Paper
                       shadow="md"
                       p={4}
@@ -246,7 +254,8 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
                         <RichTextEditor.Link />
                         <RichTextEditor.Unlink />
                       </RichTextEditor.ControlsGroup>
-                    </Paper>
+                    </Paper>,
+                    document.body,
                   )}
                 </RichTextEditor>
                 <Group gap="xs" justify="flex-end">
@@ -257,7 +266,7 @@ export function TaskEditModal({ task, onClose, filterParams, sectionTitle, secti
             ) : currentDescription ? (
               <Box
                 onClick={startEditingDescription}
-                style={{ cursor: 'pointer', borderRadius: 4, padding: '4px 0' }}
+                style={{ cursor: 'pointer' }}
               >
                 <DescriptionRenderer content={currentDescription} size="sm" />
               </Box>
