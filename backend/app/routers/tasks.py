@@ -89,6 +89,7 @@ async def task_counts(user: User = Depends(get_current_user), db: AsyncSession =
         Task.user_id == user.id,
         Task.completed == True,  # noqa: E712
         Task.parent_task_id == None,  # noqa: E711
+        cast(Task.completed_at, Date) == today
     )
 
     today_count = (await db.execute(today_q)).scalar() or 0
