@@ -174,7 +174,7 @@ async def update_task(
     should_recur = False
     if "completed" in data:
         if data["completed"] and not task.completed:
-            task.completed_at = datetime.now(timezone.utc)
+            task.completed_at = task.due_date or datetime.now(timezone.utc)
             # Check if this is a recurring task that needs a new occurrence
             if task.recurrence:
                 should_recur = True
