@@ -17,6 +17,7 @@ import { UpcomingPage } from '@/pages/UpcomingPage';
 import { GoalsPage } from '@/pages/GoalsPage';
 import { SurveyResultsPage } from '@/pages/SurveyResultsPage';
 import { AdminFeedbackPage } from '@/pages/AdminFeedbackPage';
+import { DashboardPage } from '@/pages/DashboardPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuthStore();
@@ -56,6 +57,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard/:token" element={<DashboardPage />} />
         <Route
           path="/*"
           element={
