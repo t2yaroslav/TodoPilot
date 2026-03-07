@@ -127,17 +127,37 @@ function uncacheTask(id: string) {
 /**
  * Applies the same filter parameters that the backend accepts, but locally
  * against the in-memory cache.
+ *
+ * Key rules derived from the backend tasks router:
+ *  - due_today  → due_date <= today  (includes overdue tasks)
+ *  - upcoming   → due_date > today
+ *  - inbox      → project_id IS NULL AND goal_id IS NULL
+ *  - Without explicit parent_task_id → only top-level tasks (parent_task_id IS NULL)
  */
 function filterTasksLocally(params: Record<string, unknown>): Task[] {
   const today = new Date().toISOString().split('T')[0];
   return Array.from(taskCache.values()).filter((t) => {
+    // Backend always returns top-level tasks unless parent_task_id is explicitly provided
+    if ('parent_task_id' in params) {
+      if (t.parent_task_id !== (params.parent_task_id ?? null)) return false;
+    } else {
+      if (t.parent_task_id !== null) return false;
+    }
+
     if (params.completed !== undefined && t.completed !== params.completed) return false;
-    if (params.due_today && t.due_date !== today) return false;
+
+    // due_today uses <=, so overdue tasks are included (same as server)
+    if (params.due_today && (!t.due_date || t.due_date > today)) return false;
+
+    // upcoming: strictly future
     if (params.upcoming && (!t.due_date || t.due_date <= today)) return false;
-    if (params.inbox && (t.project_id || t.parent_task_id)) return false;
+
+    // inbox: no project AND no goal (server checks both)
+    if (params.inbox && (t.project_id || t.goal_id)) return false;
+
     if (params.project_id && t.project_id !== params.project_id) return false;
     if (params.goal_id && t.goal_id !== params.goal_id) return false;
-    if ('parent_task_id' in params && t.parent_task_id !== params.parent_task_id) return false;
+
     return true;
   });
 }
