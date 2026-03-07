@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as api from '@/api/client';
+import { useOfflineStore } from '@/stores/offlineStore';
 
 export interface Task {
   id: string;
@@ -104,6 +105,56 @@ export interface GoalStats {
   projects: number;
 }
 
+/** Returns true if the error is a network-level failure (no server response) */
+function isNetworkError(err: unknown): boolean {
+  return !!(err && typeof err === 'object' && 'isAxiosError' in err && !(err as { response?: unknown }).response);
+}
+
+/** Build a minimal optimistic Task object for offline creates */
+function makeOptimisticTask(id: string, taskData: Record<string, unknown>, position: number): Task {
+  const now = new Date().toISOString();
+  return {
+    id,
+    title: (taskData.title as string) ?? '',
+    description: (taskData.description as string) ?? null,
+    priority: (taskData.priority as number) ?? 0,
+    due_date: (taskData.due_date as string) ?? null,
+    completed: false,
+    completed_at: null,
+    project_id: (taskData.project_id as string) ?? null,
+    goal_id: (taskData.goal_id as string) ?? null,
+    parent_task_id: (taskData.parent_task_id as string) ?? null,
+    recurrence: (taskData.recurrence as string) ?? null,
+    position,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+/** Build a minimal optimistic Project object for offline creates */
+function makeOptimisticProject(id: string, data: Record<string, unknown>, position: number): Project {
+  return {
+    id,
+    title: (data.title as string) ?? '',
+    color: (data.color as string) ?? '#4a90d9',
+    goal_id: (data.goal_id as string) ?? null,
+    position,
+    created_at: new Date().toISOString(),
+  };
+}
+
+/** Build a minimal optimistic Goal object for offline creates */
+function makeOptimisticGoal(id: string, data: Record<string, unknown>): Goal {
+  return {
+    id,
+    title: (data.title as string) ?? '',
+    color: (data.color as string) ?? '#4a90d9',
+    goal_type: (data.goal_type as string) ?? 'quarterly',
+    parent_goal_id: (data.parent_goal_id as string) ?? null,
+    created_at: new Date().toISOString(),
+  };
+}
+
 interface TaskStore {
   tasks: Task[];
   projects: Project[];
@@ -143,61 +194,130 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   navCounts: { today: 0, inbox: 0, completed: 0 },
   loading: false,
 
+  // ── Tasks ───────────────────────────────────────────────────────────────
+
   fetchTasks: async (params) => {
     set({ loading: true });
-    const { data } = await api.getTasks(params);
-    set({ tasks: data, loading: false });
+    try {
+      const { data } = await api.getTasks(params);
+      set({ tasks: data, loading: false });
+    } catch (err) {
+      set({ loading: false });
+      if (!isNetworkError(err)) throw err;
+      // Silently keep existing cached data when offline
+    }
   },
 
   addTask: async (taskData) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      const tempId = `temp_${crypto.randomUUID()}`;
+      const optimistic = makeOptimisticTask(tempId, taskData, get().tasks.length);
+      set({ tasks: [...get().tasks, optimistic] });
+      enqueue({ type: 'create_task', entityId: tempId, data: taskData });
+      return optimistic;
+    }
     const { data } = await api.createTask(taskData);
     set({ tasks: [...get().tasks, data] });
     return data;
   },
 
   editTask: async (id, updates) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      set({
+        tasks: get().tasks.map((t) =>
+          t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t,
+        ),
+      });
+      enqueue({ type: 'update_task', entityId: id, data: updates });
+      return;
+    }
     const { data } = await api.updateTask(id, updates);
     set({ tasks: get().tasks.map((t) => (t.id === id ? data : t)) });
   },
 
   removeTask: async (id) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      set({ tasks: get().tasks.filter((t) => t.id !== id) });
+      enqueue({ type: 'delete_task', entityId: id });
+      return;
+    }
     await api.deleteTask(id);
     set({ tasks: get().tasks.filter((t) => t.id !== id) });
   },
 
   toggleTask: async (id, completed) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      set({
+        tasks: get().tasks.map((t) =>
+          t.id === id
+            ? { ...t, completed, completed_at: completed ? new Date().toISOString() : null }
+            : t,
+        ),
+      });
+      enqueue({ type: 'update_task', entityId: id, data: { completed } });
+      return;
+    }
     const { data } = await api.updateTask(id, { completed });
     set({ tasks: get().tasks.map((t) => (t.id === id ? data : t)) });
   },
 
+  // ── Projects ────────────────────────────────────────────────────────────
+
   fetchProjects: async () => {
-    const { data } = await api.getProjects();
-    set({ projects: data });
+    try {
+      const { data } = await api.getProjects();
+      set({ projects: data });
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
   },
 
   fetchProjectTaskCounts: async () => {
-    const { data } = await api.getProjectTaskCounts();
-    set({ projectTaskCounts: data });
+    try {
+      const { data } = await api.getProjectTaskCounts();
+      set({ projectTaskCounts: data });
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
   },
 
   fetchNavCounts: async () => {
-    const { data } = await api.getTaskCounts();
-    set({ navCounts: data });
+    try {
+      const { data } = await api.getTaskCounts();
+      set({ navCounts: data });
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
   },
 
   refreshAllCounts: async () => {
-    const [projCounts, navCounts] = await Promise.all([
-      api.getProjectTaskCounts(),
-      api.getTaskCounts(),
-    ]);
-    set({ projectTaskCounts: projCounts.data, navCounts: navCounts.data });
+    try {
+      const [projCounts, navCounts] = await Promise.all([
+        api.getProjectTaskCounts(),
+        api.getTaskCounts(),
+      ]);
+      set({ projectTaskCounts: projCounts.data, navCounts: navCounts.data });
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
   },
 
   addProject: async (projData) => {
-    // Auto-assign color if not provided
     if (!projData.color) {
       const existingColors = get().projects.map((p) => p.color);
       projData = { ...projData, color: pickNextProjectColor(existingColors) };
+    }
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      const tempId = `temp_${crypto.randomUUID()}`;
+      const optimistic = makeOptimisticProject(tempId, projData, get().projects.length);
+      set({ projects: [...get().projects, optimistic] });
+      enqueue({ type: 'create_project', entityId: tempId, data: projData });
+      return optimistic;
     }
     const { data } = await api.createProject(projData);
     set({ projects: [...get().projects, data] });
@@ -205,37 +325,79 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   editProject: async (id, updates) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      set({ projects: get().projects.map((p) => (p.id === id ? { ...p, ...updates } : p)) });
+      enqueue({ type: 'update_project', entityId: id, data: updates });
+      return;
+    }
     const { data } = await api.updateProject(id, updates);
     set({ projects: get().projects.map((p) => (p.id === id ? data : p)) });
   },
 
   removeProject: async (id) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      set({ projects: get().projects.filter((p) => p.id !== id) });
+      enqueue({ type: 'delete_project', entityId: id });
+      return;
+    }
     await api.deleteProject(id);
     set({ projects: get().projects.filter((p) => p.id !== id) });
   },
 
+  // ── Goals ───────────────────────────────────────────────────────────────
+
   fetchGoals: async () => {
-    const { data } = await api.getGoals();
-    set({ goals: data });
+    try {
+      const { data } = await api.getGoals();
+      set({ goals: data });
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
   },
 
   fetchGoalStats: async () => {
-    const { data } = await api.getGoalStats();
-    set({ goalStats: data });
+    try {
+      const { data } = await api.getGoalStats();
+      set({ goalStats: data });
+    } catch (err) {
+      if (!isNetworkError(err)) throw err;
+    }
   },
 
   addGoal: async (goalData) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      const tempId = `temp_${crypto.randomUUID()}`;
+      const optimistic = makeOptimisticGoal(tempId, goalData);
+      set({ goals: [...get().goals, optimistic] });
+      enqueue({ type: 'create_goal', entityId: tempId, data: goalData });
+      return optimistic;
+    }
     const { data } = await api.createGoal(goalData);
     set({ goals: [...get().goals, data] });
     return data;
   },
 
   editGoal: async (id, updates) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      set({ goals: get().goals.map((g) => (g.id === id ? { ...g, ...updates } : g)) });
+      enqueue({ type: 'update_goal', entityId: id, data: updates });
+      return;
+    }
     const { data } = await api.updateGoal(id, updates);
     set({ goals: get().goals.map((g) => (g.id === id ? data : g)) });
   },
 
   removeGoal: async (id) => {
+    const { isOnline, enqueue } = useOfflineStore.getState();
+    if (!isOnline) {
+      set({ goals: get().goals.filter((g) => g.id !== id) });
+      enqueue({ type: 'delete_goal', entityId: id });
+      return;
+    }
     await api.deleteGoal(id);
     set({ goals: get().goals.filter((g) => g.id !== id) });
   },

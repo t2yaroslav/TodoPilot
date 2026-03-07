@@ -14,6 +14,8 @@ import {
   Collapse,
   Box,
   Burger,
+  Badge,
+  Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
@@ -36,10 +38,13 @@ import {
   IconTarget,
   IconClipboardList,
   IconMessageReport,
+  IconWifiOff,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useTaskStore, Project } from '@/stores/taskStore';
 import { useFeedbackStore } from '@/stores/feedbackStore';
+import { useOfflineStore } from '@/stores/offlineStore';
 import { QuickAddModal } from '@/components/tasks/QuickAddModal';
 import { FeedbackModal } from '@/components/feedback/FeedbackModal';
 import classes from './AppLayout.module.css';
@@ -140,6 +145,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuthStore();
   const { projects, projectTaskCounts, navCounts, fetchProjects, refreshAllCounts } = useTaskStore();
   const openFeedback = useFeedbackStore((s) => s.openModal);
+  const { isOnline, isSyncing, pendingOps } = useOfflineStore();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [opened, setOpened] = useState(true);
@@ -174,6 +180,41 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {opened && (
           <AppShell.Navbar p="xs" style={{ borderRight: '1px solid var(--mantine-color-default-border)' }}>
             <AppShell.Section>
+              {/* Offline / syncing status indicator */}
+              {!isOnline && (
+                <Tooltip
+                  label={
+                    pendingOps.length > 0
+                      ? `${pendingOps.length} изменений ожидают синхронизации`
+                      : 'Нет соединения с сервером'
+                  }
+                  position="right"
+                  withArrow
+                >
+                  <Badge
+                    color="orange"
+                    variant="light"
+                    leftSection={<IconWifiOff size={11} />}
+                    size="sm"
+                    mb="xs"
+                    style={{ cursor: 'default' }}
+                  >
+                    Офлайн{pendingOps.length > 0 ? ` · ${pendingOps.length}` : ''}
+                  </Badge>
+                </Tooltip>
+              )}
+              {isOnline && isSyncing && (
+                <Badge
+                  color="blue"
+                  variant="light"
+                  leftSection={<span className={classes.spin}><IconRefresh size={11} /></span>}
+                  size="sm"
+                  mb="xs"
+                  style={{ cursor: 'default' }}
+                >
+                  Синхронизация...
+                </Badge>
+              )}
               <Group justify="space-between" mb="xs">
                 <Menu shadow="md" width={200}>
                   <Menu.Target>

@@ -53,6 +53,12 @@ api.interceptors.response.use(
       return Promise.reject(err);
     }
 
+    // Network errors (no response from server) are handled silently.
+    // The offline indicator in the UI informs the user; toasts would be noise.
+    if (!err.response) {
+      return Promise.reject(err);
+    }
+
     const data = err.response?.data;
     const status = err.response?.status || 'Network Error';
     const message = data?.error || data?.detail || err.message || 'Неизвестная ошибка';

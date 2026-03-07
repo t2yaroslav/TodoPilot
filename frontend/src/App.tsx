@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoadingOverlay } from '@mantine/core';
 import { useAuthStore } from '@/stores/authStore';
 import { useSurveyStore } from '@/stores/surveyStore';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { SurveyPrompt } from '@/components/survey/SurveyPrompt';
 import { WeeklySurveyWizard } from '@/components/survey/WeeklySurveyWizard';
@@ -45,6 +46,7 @@ function SurveyTrigger() {
 
 export default function App() {
   const { token, fetchUser } = useAuthStore();
+  useOfflineSync();
 
   useEffect(() => {
     if (token) fetchUser();
