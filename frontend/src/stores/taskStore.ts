@@ -110,6 +110,38 @@ function isNetworkError(err: unknown): boolean {
   return !!(err && typeof err === 'object' && 'isAxiosError' in err && !(err as { response?: unknown }).response);
 }
 
+/**
+ * Module-level cache that accumulates every task we've ever loaded from the
+ * server. Used to serve client-side-filtered results when the server is
+ * unreachable (offline mode).
+ */
+const taskCache = new Map<string, Task>();
+
+function cacheTask(t: Task) {
+  taskCache.set(t.id, t);
+}
+function uncacheTask(id: string) {
+  taskCache.delete(id);
+}
+
+/**
+ * Applies the same filter parameters that the backend accepts, but locally
+ * against the in-memory cache.
+ */
+function filterTasksLocally(params: Record<string, unknown>): Task[] {
+  const today = new Date().toISOString().split('T')[0];
+  return Array.from(taskCache.values()).filter((t) => {
+    if (params.completed !== undefined && t.completed !== params.completed) return false;
+    if (params.due_today && t.due_date !== today) return false;
+    if (params.upcoming && (!t.due_date || t.due_date <= today)) return false;
+    if (params.inbox && (t.project_id || t.parent_task_id)) return false;
+    if (params.project_id && t.project_id !== params.project_id) return false;
+    if (params.goal_id && t.goal_id !== params.goal_id) return false;
+    if ('parent_task_id' in params && t.parent_task_id !== params.parent_task_id) return false;
+    return true;
+  });
+}
+
 /** Build a minimal optimistic Task object for offline creates */
 function makeOptimisticTask(id: string, taskData: Record<string, unknown>, position: number): Task {
   const now = new Date().toISOString();
@@ -198,13 +230,20 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   fetchTasks: async (params) => {
     set({ loading: true });
+    if (!useOfflineStore.getState().isOnline) {
+      // Serve results from the local cache, applying the same filters the backend would
+      set({ tasks: filterTasksLocally(params ?? {}), loading: false });
+      return;
+    }
     try {
       const { data } = await api.getTasks(params);
+      data.forEach(cacheTask);
       set({ tasks: data, loading: false });
     } catch (err) {
       set({ loading: false });
       if (!isNetworkError(err)) throw err;
-      // Silently keep existing cached data when offline
+      // Network error mid-session: fall back to cached data
+      set({ tasks: filterTasksLocally(params ?? {}) });
     }
   },
 
@@ -213,11 +252,13 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     if (!isOnline) {
       const tempId = `temp_${crypto.randomUUID()}`;
       const optimistic = makeOptimisticTask(tempId, taskData, get().tasks.length);
+      cacheTask(optimistic);
       set({ tasks: [...get().tasks, optimistic] });
       enqueue({ type: 'create_task', entityId: tempId, data: taskData });
       return optimistic;
     }
     const { data } = await api.createTask(taskData);
+    cacheTask(data);
     set({ tasks: [...get().tasks, data] });
     return data;
   },
@@ -225,43 +266,45 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   editTask: async (id, updates) => {
     const { isOnline, enqueue } = useOfflineStore.getState();
     if (!isOnline) {
-      set({
-        tasks: get().tasks.map((t) =>
-          t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t,
-        ),
-      });
+      const updated = { ...get().tasks.find((t) => t.id === id)!, ...updates, updated_at: new Date().toISOString() };
+      cacheTask(updated);
+      set({ tasks: get().tasks.map((t) => (t.id === id ? updated : t)) });
       enqueue({ type: 'update_task', entityId: id, data: updates });
       return;
     }
     const { data } = await api.updateTask(id, updates);
+    cacheTask(data);
     set({ tasks: get().tasks.map((t) => (t.id === id ? data : t)) });
   },
 
   removeTask: async (id) => {
     const { isOnline, enqueue } = useOfflineStore.getState();
     if (!isOnline) {
+      uncacheTask(id);
       set({ tasks: get().tasks.filter((t) => t.id !== id) });
       enqueue({ type: 'delete_task', entityId: id });
       return;
     }
     await api.deleteTask(id);
+    uncacheTask(id);
     set({ tasks: get().tasks.filter((t) => t.id !== id) });
   },
 
   toggleTask: async (id, completed) => {
     const { isOnline, enqueue } = useOfflineStore.getState();
     if (!isOnline) {
-      set({
-        tasks: get().tasks.map((t) =>
-          t.id === id
-            ? { ...t, completed, completed_at: completed ? new Date().toISOString() : null }
-            : t,
-        ),
-      });
+      const toggled = {
+        ...get().tasks.find((t) => t.id === id)!,
+        completed,
+        completed_at: completed ? new Date().toISOString() : null,
+      };
+      cacheTask(toggled);
+      set({ tasks: get().tasks.map((t) => (t.id === id ? toggled : t)) });
       enqueue({ type: 'update_task', entityId: id, data: { completed } });
       return;
     }
     const { data } = await api.updateTask(id, { completed });
+    cacheTask(data);
     set({ tasks: get().tasks.map((t) => (t.id === id ? data : t)) });
   },
 
