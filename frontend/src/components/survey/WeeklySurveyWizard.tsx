@@ -389,7 +389,7 @@ function PreviousStepsSidebar({ currentStep }: { currentStep: number }) {
   return (
     <ScrollArea h="100%" offsetScrollbars>
       <Stack gap="sm">
-        <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+        <Text size="xs" fw={600} c="dimmed">
           Предыдущие ответы
         </Text>
         {completedSteps.map((s) => (
