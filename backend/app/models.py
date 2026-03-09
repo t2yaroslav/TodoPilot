@@ -107,6 +107,7 @@ class WeeklySurvey(Base):
     difficulties: Mapped[list | None] = mapped_column(JSONB)  # list of strings
     improvements: Mapped[list | None] = mapped_column(JSONB)  # list of strings
     weekly_goals: Mapped[list | None] = mapped_column(JSONB)  # list of strings
+    goal_outcomes: Mapped[list | None] = mapped_column(JSONB)  # list of {goal: str, completed: bool}
     dismissed: Mapped[bool] = mapped_column(Boolean, default=False)  # user declined the survey
     completed: Mapped[bool] = mapped_column(Boolean, default=False)  # user finished the wizard
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

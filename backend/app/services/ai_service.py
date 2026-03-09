@@ -141,28 +141,45 @@ async def generate_survey_step(
             parts.append(f"Что меняли: {json.dumps(previous_retrospective['improvements'], ensure_ascii=False)}")
         if previous_retrospective.get("weekly_goals"):
             parts.append(f"Цели прошлой недели: {json.dumps(previous_retrospective['weekly_goals'], ensure_ascii=False)}")
+        if previous_retrospective.get("goal_outcomes"):
+            parts.append(f"Итоги по целям прошлой недели: {json.dumps(previous_retrospective['goal_outcomes'], ensure_ascii=False)}")
         if parts:
             prev_retro_text = "\n\nПредыдущий обзор недели:\n" + "\n".join(parts)
 
-    if step == 1:
+    # Build goal outcomes context from current survey
+    goal_outcomes_text = ""
+    if previous_answers and previous_answers.get("goal_outcomes"):
+        outcomes = previous_answers["goal_outcomes"]
+        completed = [o["goal"] for o in outcomes if o.get("completed")]
+        not_completed = [o["goal"] for o in outcomes if not o.get("completed")]
+        parts = []
+        if completed:
+            parts.append(f"Выполненные цели прошлой недели: {json.dumps(completed, ensure_ascii=False)}")
+        if not_completed:
+            parts.append(f"Невыполненные цели прошлой недели: {json.dumps(not_completed, ensure_ascii=False)}")
+        if parts:
+            goal_outcomes_text = "\n\n" + "\n".join(parts)
+
+    if step == 2:
         prompt = (
-            f"{context}{prev_retro_text}\n\n"
+            f"{context}{prev_retro_text}{goal_outcomes_text}\n\n"
             "На основе выполненных задач за неделю, выдели ТОЛЬКО действительно значимые достижения пользователя. "
+            "Учитывай итоги по целям прошлой недели (какие выполнены, какие нет) при оценке достижений. "
             "Если за неделю не было значимых результатов - верни пустой массив []. "
             "НЕ выдумывай малозначимые пункты ради заполнения списка. "
             "Максимум 7 пунктов, только то, чем реально можно гордиться. "
             "Формулируй кратко и конкретно. Отвечай на русском языке. "
             "Верни JSON-массив строк. Только JSON, без markdown."
         )
-    elif step == 3:
+    elif step == 4:
         prev = previous_answers or {}
         achievements = prev.get("achievements", [])
         difficulties = prev.get("difficulties", [])
         prompt = (
-            f"{context}{prev_retro_text}\n\n"
+            f"{context}{prev_retro_text}{goal_outcomes_text}\n\n"
             f"Достижения пользователя на этой неделе: {json.dumps(achievements, ensure_ascii=False)}\n"
             f"Трудности, которые отметил пользователь: {json.dumps(difficulties, ensure_ascii=False)}\n\n"
-            "На основе психопортрета пользователя, его достижений, трудностей, "
+            "На основе психопортрета пользователя, его достижений, трудностей, итогов по целям прошлой недели, "
             "а также предыдущего обзора недели, предложи ОДНО самое важное и конкретное изменение "
             "в подходе к работе, которое даст наибольший эффект на этой неделе. "
             "Только в крайнем случае предложи 2-3 изменения, и только если они тесно связаны между собой. "
@@ -170,17 +187,18 @@ async def generate_survey_step(
             "Отвечай на русском языке. "
             "Верни JSON-массив строк (обычно 1 элемент). Только JSON, без markdown."
         )
-    else:  # step 4
+    else:  # step 5
         prev = previous_answers or {}
         achievements = prev.get("achievements", [])
         difficulties = prev.get("difficulties", [])
         improvements = prev.get("improvements", [])
         prompt = (
-            f"{context}{prev_retro_text}\n\n"
+            f"{context}{prev_retro_text}{goal_outcomes_text}\n\n"
             f"Достижения: {json.dumps(achievements, ensure_ascii=False)}\n"
             f"Трудности: {json.dumps(difficulties, ensure_ascii=False)}\n"
             f"Планируемые изменения: {json.dumps(improvements, ensure_ascii=False)}\n\n"
-            "На основе всего контекста, предложи 3-5 конкретных целей на эту неделю. "
+            "На основе всего контекста, включая итоги по целям прошлой недели, предложи 3-5 конкретных целей на эту неделю. "
+            "Если какие-то цели прошлой недели не были выполнены - учти это при формировании новых целей. "
             "Цели должны быть достижимыми и связанными с долгосрочными целями пользователя. "
             "ВАЖНО: формулируй цели в прошедшем времени от первого лица, "
             "как будто пользователь уже выполнил их (например: «Я закончил отчёт», «Я сделала презентацию»). "
@@ -217,7 +235,17 @@ async def update_psychoportrait(
     import json
 
     current = current_profile or "Пока нет данных."
+    goal_outcomes = survey_data.get('goal_outcomes', [])
+    goal_outcomes_text = ""
+    if goal_outcomes:
+        completed = [o["goal"] for o in goal_outcomes if o.get("completed")]
+        not_completed = [o["goal"] for o in goal_outcomes if not o.get("completed")]
+        if completed:
+            goal_outcomes_text += f"Выполненные цели прошлой недели: {json.dumps(completed, ensure_ascii=False)}\n"
+        if not_completed:
+            goal_outcomes_text += f"Невыполненные цели прошлой недели: {json.dumps(not_completed, ensure_ascii=False)}\n"
     survey_text = (
+        f"{goal_outcomes_text}"
         f"Достижения: {json.dumps(survey_data.get('achievements', []), ensure_ascii=False)}\n"
         f"Трудности: {json.dumps(survey_data.get('difficulties', []), ensure_ascii=False)}\n"
         f"Что хочет изменить: {json.dumps(survey_data.get('improvements', []), ensure_ascii=False)}\n"

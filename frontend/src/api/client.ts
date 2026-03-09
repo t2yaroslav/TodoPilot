@@ -148,7 +148,12 @@ export const aiExecuteAction = (action: Record<string, unknown>) =>
 // Weekly Survey
 export const getSurveyStatus = () => api.get('/survey/status');
 export const dismissSurvey = () => api.post('/survey/dismiss');
+export interface GoalOutcome {
+  goal: string;
+  completed: boolean;
+}
 export const saveSurveyDraft = (data: {
+  goal_outcomes?: GoalOutcome[];
   achievements?: string[];
   difficulties?: string[];
   improvements?: string[];
@@ -156,23 +161,33 @@ export const saveSurveyDraft = (data: {
 }) => api.post('/survey/save-draft', data);
 export const generateSurveyStep = (data: {
   step: number;
+  goal_outcomes?: GoalOutcome[];
   achievements?: string[];
   difficulties?: string[];
   improvements?: string[];
 }) => api.post('/survey/generate', data);
 export const submitSurvey = (data: {
+  goal_outcomes: GoalOutcome[];
   achievements: string[];
   difficulties: string[];
   improvements: string[];
   weekly_goals: string[];
 }) => api.post('/survey/submit', data);
 export const updateProfileFromSurvey = (data: {
+  goal_outcomes: GoalOutcome[];
   achievements: string[];
   difficulties: string[];
   improvements: string[];
   weekly_goals: string[];
 }) => api.post('/survey/update-profile', data);
 export const getSurveyResults = () => api.get('/survey/results');
+export const updateSurveyResult = (id: string, data: {
+  goal_outcomes?: GoalOutcome[];
+  achievements?: string[];
+  difficulties?: string[];
+  improvements?: string[];
+  weekly_goals?: string[];
+}) => api.patch(`/survey/results/${id}`, data);
 
 // Feedback
 export const createFeedback = (data: FormData) => api.post('/feedback', data, {

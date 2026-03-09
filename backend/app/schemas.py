@@ -225,10 +225,17 @@ class SurveyStatusOut(BaseModel):
     already_completed: bool = False
     already_dismissed: bool = False
     draft: "SurveyOut | None" = None  # existing draft data
+    previous_week_goals: list[str] | None = None  # goals from previous completed survey
+
+
+class GoalOutcome(BaseModel):
+    goal: str
+    completed: bool
 
 
 class SurveyGenerateRequest(BaseModel):
-    step: int  # 1, 3 or 4 (step 2 is manual)
+    step: int  # 1-5 (step 0 is goal outcomes, step 3 is manual)
+    goal_outcomes: list[GoalOutcome] | None = None
     achievements: list[str] | None = None
     difficulties: list[str] | None = None
     improvements: list[str] | None = None
@@ -239,6 +246,7 @@ class SurveyGenerateResponse(BaseModel):
 
 
 class SurveySaveDraftRequest(BaseModel):
+    goal_outcomes: list[GoalOutcome] | None = None
     achievements: list[str] | None = None
     difficulties: list[str] | None = None
     improvements: list[str] | None = None
@@ -246,15 +254,25 @@ class SurveySaveDraftRequest(BaseModel):
 
 
 class SurveySubmitRequest(BaseModel):
+    goal_outcomes: list[GoalOutcome]
     achievements: list[str]
     difficulties: list[str]
     improvements: list[str]
     weekly_goals: list[str]
 
 
+class SurveyUpdateRequest(BaseModel):
+    goal_outcomes: list[GoalOutcome] | None = None
+    achievements: list[str] | None = None
+    difficulties: list[str] | None = None
+    improvements: list[str] | None = None
+    weekly_goals: list[str] | None = None
+
+
 class SurveyOut(BaseModel):
     id: UUID
     week_start: datetime
+    goal_outcomes: list[GoalOutcome] | None
     achievements: list[str] | None
     difficulties: list[str] | None
     improvements: list[str] | None
