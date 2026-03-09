@@ -71,6 +71,10 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false"
         ))
+        # Auto-migrate: add goal_outcomes column to weekly_surveys if missing
+        await conn.execute(text(
+            "ALTER TABLE weekly_surveys ADD COLUMN IF NOT EXISTS goal_outcomes JSONB"
+        ))
     yield
 
 
