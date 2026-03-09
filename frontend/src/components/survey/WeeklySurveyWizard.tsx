@@ -13,7 +13,7 @@ import {
   ScrollArea,
   List,
   ThemeIcon,
-  Checkbox,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconX,
@@ -26,6 +26,9 @@ import {
   IconBulb,
   IconTarget,
   IconClipboardCheck,
+  IconCircleCheck,
+  IconCircleX,
+  IconQuestionMark,
 } from '@tabler/icons-react';
 import { useSurveyStore } from '@/stores/surveyStore';
 
@@ -247,8 +250,8 @@ function EditableList({
 
 /**
  * Goal outcomes checklist for step 1.
- * Clean flat list matching the app's TaskItem style.
- * Click a row to toggle: unmarked → done → not done → done → ...
+ * Flat list with status icon on the right.
+ * Click cycles: ? (question) → ✓ (done) → ✗ (not done) → ✓ → ✗ → ...
  */
 function GoalOutcomesChecklist() {
   const { goalOutcomes, setGoalOutcome, noGoalsMessage } = useSurveyStore();
@@ -261,10 +264,11 @@ function GoalOutcomesChecklist() {
     );
   }
 
-  const handleToggle = (index: number, completed: boolean | null) => {
-    // unmarked → done, done → not done, not done → done
-    const next = completed === true ? false : true;
-    setGoalOutcome(index, next);
+  const handleToggle = (index: number, current: boolean | null) => {
+    // null (question) → true (done) → false (not done) → true → false → ...
+    if (current === null || current === undefined) return setGoalOutcome(index, true);
+    if (current === true) return setGoalOutcome(index, false);
+    return setGoalOutcome(index, true);
   };
 
   return (
@@ -274,37 +278,24 @@ function GoalOutcomesChecklist() {
         const isFailed = outcome.completed === false;
         const isUnmarked = outcome.completed === null || outcome.completed === undefined;
 
+        const icon = isDone
+          ? <IconCircleCheck size={20} />
+          : isFailed
+            ? <IconCircleX size={20} />
+            : <IconQuestionMark size={20} />;
+        const color = isDone ? 'green' : isFailed ? 'red' : 'gray';
+        const tooltip = isDone ? 'Выполнено' : isFailed ? 'Не выполнено' : 'Не отмечено';
+
         return (
           <Box
             key={i}
-            py={8}
+            py={10}
             px="sm"
-            onClick={() => handleToggle(i, isUnmarked ? null : outcome.completed)}
             style={{
               borderBottom: '1px solid var(--mantine-color-default-border)',
-              cursor: 'pointer',
             }}
           >
             <Group gap="sm" wrap="nowrap" align="center">
-              <Checkbox
-                checked={isDone}
-                indeterminate={isFailed}
-                color={isDone ? 'green' : isFailed ? 'red' : 'gray'}
-                radius="xl"
-                size="sm"
-                readOnly
-                onClick={(e) => e.stopPropagation()}
-                styles={isFailed ? {
-                  input: {
-                    borderColor: 'var(--mantine-color-red-6)',
-                    backgroundColor: 'var(--mantine-color-red-6)',
-                  },
-                } : isUnmarked ? {
-                  input: {
-                    borderColor: 'var(--mantine-color-dimmed)',
-                  },
-                } : undefined}
-              />
               <Text
                 size="sm"
                 td={isDone ? 'line-through' : undefined}
@@ -313,11 +304,17 @@ function GoalOutcomesChecklist() {
               >
                 {outcome.goal}
               </Text>
-              {!isUnmarked && (
-                <Text size="xs" c={isDone ? 'green' : 'red'} fw={500}>
-                  {isDone ? 'Выполнено' : 'Не выполнено'}
-                </Text>
-              )}
+              <Tooltip label={tooltip} position="left">
+                <ActionIcon
+                  variant={isUnmarked ? 'subtle' : 'light'}
+                  color={color}
+                  size="md"
+                  radius="xl"
+                  onClick={() => handleToggle(i, outcome.completed)}
+                >
+                  {icon}
+                </ActionIcon>
+              </Tooltip>
             </Group>
           </Box>
         );

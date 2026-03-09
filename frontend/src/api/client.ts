@@ -150,7 +150,7 @@ export const getSurveyStatus = () => api.get('/survey/status');
 export const dismissSurvey = () => api.post('/survey/dismiss');
 export interface GoalOutcome {
   goal: string;
-  completed: boolean;
+  completed: boolean | null;
 }
 export const saveSurveyDraft = (data: {
   goal_outcomes?: GoalOutcome[];

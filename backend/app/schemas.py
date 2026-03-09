@@ -231,7 +231,7 @@ class SurveyStatusOut(BaseModel):
 
 class GoalOutcome(BaseModel):
     goal: str
-    completed: bool
+    completed: bool | None = None
 
 
 class SurveyGenerateRequest(BaseModel):

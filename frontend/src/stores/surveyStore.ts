@@ -71,7 +71,7 @@ interface SurveyState {
   dismiss: () => Promise<void>;
   generateForStep: (step: number, force?: boolean) => Promise<void>;
   setStepData: (step: number, data: string[]) => void;
-  setGoalOutcome: (index: number, completed: boolean) => void;
+  setGoalOutcome: (index: number, completed: boolean | null) => void;
   goToStep: (step: number) => void;
   nextStep: () => Promise<void>;
   prevStep: () => void;
@@ -122,7 +122,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
           // If draft has no outcomes but there are previous goals, initialize them
           const outcomes = draftOutcomes.length > 0
             ? draftOutcomes
-            : prevGoals.map((g: string) => ({ goal: g, completed: false }));
+            : prevGoals.map((g: string) => ({ goal: g, completed: null }));
           set({
             shouldShow: true,
             previousWeekGoals: prevGoals,
@@ -138,7 +138,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
         set({
           shouldShow: true,
           previousWeekGoals: prevGoals,
-          goalOutcomes: prevGoals.map((g: string) => ({ goal: g, completed: false })),
+          goalOutcomes: prevGoals.map((g: string) => ({ goal: g, completed: null })),
           noGoalsMessage: noGoalsMsg,
         });
         return;
@@ -225,7 +225,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     else if (step === 5) set({ weeklyGoals: data });
   },
 
-  setGoalOutcome: (index: number, completed: boolean) => {
+  setGoalOutcome: (index: number, completed: boolean | null) => {
     const outcomes = [...get().goalOutcomes];
     if (index >= 0 && index < outcomes.length) {
       outcomes[index] = { ...outcomes[index], completed };
