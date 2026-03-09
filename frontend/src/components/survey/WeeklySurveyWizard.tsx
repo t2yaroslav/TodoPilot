@@ -388,12 +388,12 @@ function PreviousStepsSidebar({ currentStep }: { currentStep: number }) {
 
   return (
     <ScrollArea h="100%" offsetScrollbars>
-      <Stack gap="xs">
+      <Stack gap="sm">
         <Text size="xs" fw={600} c="dimmed" tt="uppercase">
           Предыдущие ответы
         </Text>
         {completedSteps.map((s) => (
-          <Paper key={s.step} p="xs" withBorder radius="sm" bg="var(--mantine-color-default)">
+          <Box key={s.step}>
             <Group gap={4} mb={4}>
               <ThemeIcon size="xs" color={s.iconColor} variant="light">
                 <s.icon size={12} />
@@ -411,7 +411,7 @@ function PreviousStepsSidebar({ currentStep }: { currentStep: number }) {
                 </List.Item>
               ))}
             </List>
-          </Paper>
+          </Box>
         ))}
       </Stack>
     </ScrollArea>
@@ -533,16 +533,16 @@ export function WeeklySurveyWizard() {
 
         <div style={{
           display: showSidebar ? 'flex' : 'block',
+          flexWrap: 'wrap',
           gap: 16,
           minHeight: 200,
         }}>
-          {/* Previous steps sidebar */}
+          {/* Previous steps sidebar — collapses above content on narrow screens */}
           {showSidebar && (
             <Box
               style={{
-                width: 220,
-                minWidth: 220,
-                flexShrink: 0,
+                flex: '1 1 280px',
+                maxWidth: 360,
                 borderRight: '1px solid var(--mantine-color-default-border)',
                 paddingRight: 16,
               }}
@@ -552,7 +552,7 @@ export function WeeklySurveyWizard() {
           )}
 
           {/* Main content area */}
-          <Box style={{ flex: 1, minWidth: 0 }}>
+          <Box style={{ flex: '2 1 320px', minWidth: 0 }}>
             <Paper p="md" withBorder radius="md">
               <Stack gap="xs">
                 <Text fw={600} size="lg">
