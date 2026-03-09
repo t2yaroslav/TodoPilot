@@ -13,7 +13,7 @@ import {
   ScrollArea,
   List,
   ThemeIcon,
-  Tooltip,
+  Checkbox,
 } from '@mantine/core';
 import {
   IconX,
@@ -21,8 +21,6 @@ import {
   IconArrowLeft,
   IconArrowRight,
   IconCheck,
-  IconCircleCheck,
-  IconCircleX,
   IconTrophy,
   IconAlertTriangle,
   IconBulb,
@@ -249,7 +247,8 @@ function EditableList({
 
 /**
  * Goal outcomes checklist for step 1.
- * Shows each previous week goal with ✅/❌ toggle buttons.
+ * Clean flat list matching the app's TaskItem style.
+ * Click a row to toggle: unmarked → done → not done → done → ...
  */
 function GoalOutcomesChecklist() {
   const { goalOutcomes, setGoalOutcome, noGoalsMessage } = useSurveyStore();
@@ -262,56 +261,67 @@ function GoalOutcomesChecklist() {
     );
   }
 
+  const handleToggle = (index: number, completed: boolean | null) => {
+    // unmarked → done, done → not done, not done → done
+    const next = completed === true ? false : true;
+    setGoalOutcome(index, next);
+  };
+
   return (
-    <Stack gap="xs">
-      {goalOutcomes.map((outcome, i) => (
-        <Paper
-          key={i}
-          p="sm"
-          withBorder
-          radius="md"
-          style={{
-            borderColor: outcome.completed === true
-              ? 'var(--mantine-color-green-4)'
-              : outcome.completed === false
-                ? 'var(--mantine-color-red-4)'
-                : undefined,
-            background: outcome.completed === true
-              ? 'var(--mantine-color-green-light)'
-              : outcome.completed === false
-                ? 'var(--mantine-color-red-light)'
-                : undefined,
-          }}
-        >
-          <Group justify="space-between" wrap="nowrap">
-            <Text size="sm" style={{ flex: 1 }}>
-              {outcome.goal}
-            </Text>
-            <Group gap={4} wrap="nowrap">
-              <Tooltip label="Выполнено">
-                <ActionIcon
-                  variant={outcome.completed === true ? 'filled' : 'light'}
-                  color="green"
-                  size="md"
-                  onClick={() => setGoalOutcome(i, true)}
-                >
-                  <IconCircleCheck size={18} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Не выполнено">
-                <ActionIcon
-                  variant={outcome.completed === false ? 'filled' : 'light'}
-                  color="red"
-                  size="md"
-                  onClick={() => setGoalOutcome(i, false)}
-                >
-                  <IconCircleX size={18} />
-                </ActionIcon>
-              </Tooltip>
+    <Stack gap={0}>
+      {goalOutcomes.map((outcome, i) => {
+        const isDone = outcome.completed === true;
+        const isFailed = outcome.completed === false;
+        const isUnmarked = outcome.completed === null || outcome.completed === undefined;
+
+        return (
+          <Box
+            key={i}
+            py={8}
+            px="sm"
+            onClick={() => handleToggle(i, isUnmarked ? null : outcome.completed)}
+            style={{
+              borderBottom: '1px solid var(--mantine-color-default-border)',
+              cursor: 'pointer',
+            }}
+          >
+            <Group gap="sm" wrap="nowrap" align="center">
+              <Checkbox
+                checked={isDone}
+                indeterminate={isFailed}
+                color={isDone ? 'green' : isFailed ? 'red' : 'gray'}
+                radius="xl"
+                size="sm"
+                readOnly
+                onClick={(e) => e.stopPropagation()}
+                styles={isFailed ? {
+                  input: {
+                    borderColor: 'var(--mantine-color-red-6)',
+                    backgroundColor: 'var(--mantine-color-red-6)',
+                  },
+                } : isUnmarked ? {
+                  input: {
+                    borderColor: 'var(--mantine-color-dimmed)',
+                  },
+                } : undefined}
+              />
+              <Text
+                size="sm"
+                td={isDone ? 'line-through' : undefined}
+                c={isDone ? 'dimmed' : undefined}
+                style={{ flex: 1 }}
+              >
+                {outcome.goal}
+              </Text>
+              {!isUnmarked && (
+                <Text size="xs" c={isDone ? 'green' : 'red'} fw={500}>
+                  {isDone ? 'Выполнено' : 'Не выполнено'}
+                </Text>
+              )}
             </Group>
-          </Group>
-        </Paper>
-      ))}
+          </Box>
+        );
+      })}
     </Stack>
   );
 }
