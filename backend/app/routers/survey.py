@@ -13,6 +13,7 @@ from ..schemas import (
     SurveySaveDraftRequest,
     SurveyStatusOut,
     SurveySubmitRequest,
+    SurveyUpdateRequest,
 )
 from ..services import ai_service
 from ..services import task_queue
@@ -42,13 +43,17 @@ async def _get_or_create_survey(user_id, monday, db: AsyncSession) -> WeeklySurv
     return survey
 
 
-async def _get_previous_retrospective(user_id, monday, db: AsyncSession) -> dict | None:
-    """Get the most recent completed survey before this week."""
+async def _get_previous_retrospective(
+    user_id, monday, db: AsyncSession, lookback_days: int = 31,
+) -> dict | None:
+    """Get the most recent completed survey before this week within lookback window."""
+    earliest = monday - timedelta(days=lookback_days)
     result = await db.execute(
         select(WeeklySurvey)
         .where(
             WeeklySurvey.user_id == user_id,
             WeeklySurvey.week_start < monday,
+            WeeklySurvey.week_start >= earliest,
             WeeklySurvey.completed == True,  # noqa: E712
         )
         .order_by(WeeklySurvey.week_start.desc())
@@ -62,6 +67,7 @@ async def _get_previous_retrospective(user_id, monday, db: AsyncSession) -> dict
         "difficulties": prev.difficulties or [],
         "improvements": prev.improvements or [],
         "weekly_goals": prev.weekly_goals or [],
+        "goal_outcomes": prev.goal_outcomes or [],
     }
 
 
@@ -78,6 +84,14 @@ async def survey_status(
     if today.weekday() != 0:
         return SurveyStatusOut(should_show=False)
 
+    # Fetch previous week's goals for the "Итоги недели" step
+    prev_retro = await _get_previous_retrospective(user.id, monday, db)
+    prev_goals = prev_retro.get("weekly_goals", []) if prev_retro else []
+    # If previous survey exists but has no goals, inform the user
+    no_goals_msg = None
+    if prev_retro is not None and not prev_goals:
+        no_goals_msg = "В предыдущем обзоре не были указаны цели"
+
     # Check if survey already exists for this week
     result = await db.execute(
         select(WeeklySurvey).where(
@@ -88,7 +102,11 @@ async def survey_status(
     survey = result.scalar_one_or_none()
 
     if survey is None:
-        return SurveyStatusOut(should_show=True)
+        return SurveyStatusOut(
+            should_show=True,
+            previous_week_goals=prev_goals or None,
+            no_goals_message=no_goals_msg,
+        )
 
     if survey.completed:
         return SurveyStatusOut(
@@ -105,7 +123,13 @@ async def survey_status(
         )
 
     # Survey exists but not completed/dismissed - show it with draft data
-    return SurveyStatusOut(should_show=True, survey_id=survey.id, draft=survey)
+    return SurveyStatusOut(
+        should_show=True,
+        survey_id=survey.id,
+        draft=survey,
+        previous_week_goals=prev_goals or None,
+        no_goals_message=no_goals_msg,
+    )
 
 
 @router.post("/dismiss")
@@ -131,6 +155,8 @@ async def save_draft(
     monday = _current_week_monday()
     survey = await _get_or_create_survey(user.id, monday, db)
 
+    if body.goal_outcomes is not None:
+        survey.goal_outcomes = [o.model_dump() for o in body.goal_outcomes]
     if body.achievements is not None:
         survey.achievements = body.achievements
     if body.difficulties is not None:
@@ -151,9 +177,9 @@ async def generate_suggestions(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate AI suggestions for steps 1, 3 or 4. Step 2 is manual."""
-    if body.step not in (1, 3, 4):
-        raise HTTPException(status_code=400, detail="AI generation is only for steps 1, 3, 4")
+    """Generate AI suggestions for steps 2, 4 or 5. Step 1 is goal outcomes, step 3 is manual."""
+    if body.step not in (2, 4, 5):
+        raise HTTPException(status_code=400, detail="AI generation is only for steps 2, 4, 5")
 
     monday = _current_week_monday()
 
@@ -191,6 +217,8 @@ async def generate_suggestions(
 
     # Build previous answers context
     previous_answers = {}
+    if body.goal_outcomes is not None:
+        previous_answers["goal_outcomes"] = [o.model_dump() for o in body.goal_outcomes]
     if body.achievements is not None:
         previous_answers["achievements"] = body.achievements
     if body.difficulties is not None:
@@ -225,6 +253,7 @@ async def submit_survey(
     monday = _current_week_monday()
     survey = await _get_or_create_survey(user.id, monday, db)
 
+    survey.goal_outcomes = [o.model_dump() for o in body.goal_outcomes]
     survey.achievements = body.achievements
     survey.difficulties = body.difficulties
     survey.improvements = body.improvements
@@ -247,6 +276,7 @@ async def update_profile_from_survey(
     user_id = user.id
     current_profile = user.profile_text
     survey_data = {
+        "goal_outcomes": [o.model_dump() for o in body.goal_outcomes],
         "achievements": body.achievements,
         "difficulties": body.difficulties,
         "improvements": body.improvements,
@@ -286,6 +316,40 @@ async def get_survey_results(
         .order_by(WeeklySurvey.week_start.desc())
     )
     return result.scalars().all()
+
+
+@router.patch("/results/{survey_id}", response_model=SurveyOut)
+async def update_survey_result(
+    survey_id: str,
+    body: SurveyUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a specific survey result (e.g. goal outcomes)."""
+    result = await db.execute(
+        select(WeeklySurvey).where(
+            WeeklySurvey.id == survey_id,
+            WeeklySurvey.user_id == user.id,
+        )
+    )
+    survey = result.scalar_one_or_none()
+    if not survey:
+        raise HTTPException(status_code=404, detail="Опрос не найден")
+
+    if body.goal_outcomes is not None:
+        survey.goal_outcomes = [o.model_dump() for o in body.goal_outcomes]
+    if body.achievements is not None:
+        survey.achievements = body.achievements
+    if body.difficulties is not None:
+        survey.difficulties = body.difficulties
+    if body.improvements is not None:
+        survey.improvements = body.improvements
+    if body.weekly_goals is not None:
+        survey.weekly_goals = body.weekly_goals
+
+    await db.commit()
+    await db.refresh(survey)
+    return survey
 
 
 @router.get("/results/{survey_id}", response_model=SurveyOut)

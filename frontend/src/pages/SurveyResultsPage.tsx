@@ -11,6 +11,8 @@ import {
   ThemeIcon,
   Loader,
   Center,
+  ActionIcon,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconTrophy,
@@ -18,8 +20,11 @@ import {
   IconBulb,
   IconTarget,
   IconCalendar,
+  IconClipboardCheck,
+  IconCircleCheck,
+  IconCircleX,
 } from '@tabler/icons-react';
-import { useSurveyStore, SurveyResult } from '@/stores/surveyStore';
+import { useSurveyStore, SurveyResult, GoalOutcome } from '@/stores/surveyStore';
 
 function formatWeekDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -30,7 +35,51 @@ function formatWeekDate(dateStr: string): string {
   });
 }
 
+function GoalOutcomeItem({
+  outcome,
+  onToggle,
+}: {
+  outcome: GoalOutcome;
+  onToggle: (completed: boolean) => void;
+}) {
+  return (
+    <Group gap="xs" wrap="nowrap" py={2}>
+      <Group gap={4} wrap="nowrap">
+        <Tooltip label="Выполнено">
+          <ActionIcon
+            variant={outcome.completed === true ? 'filled' : 'subtle'}
+            color="green"
+            size="sm"
+            onClick={() => onToggle(true)}
+          >
+            <IconCircleCheck size={14} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label="Не выполнено">
+          <ActionIcon
+            variant={outcome.completed === false ? 'filled' : 'subtle'}
+            color="red"
+            size="sm"
+            onClick={() => onToggle(false)}
+          >
+            <IconCircleX size={14} />
+          </ActionIcon>
+        </Tooltip>
+      </Group>
+      <Text size="sm">{outcome.goal}</Text>
+    </Group>
+  );
+}
+
 function SurveyCard({ survey }: { survey: SurveyResult }) {
+  const { updateResult } = useSurveyStore();
+
+  const handleGoalOutcomeToggle = (index: number, completed: boolean) => {
+    const outcomes = [...(survey.goal_outcomes || [])];
+    outcomes[index] = { ...outcomes[index], completed };
+    updateResult(survey.id, { goal_outcomes: outcomes });
+  };
+
   return (
     <Accordion.Item value={survey.id}>
       <Accordion.Control>
@@ -44,6 +93,28 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
       </Accordion.Control>
       <Accordion.Panel>
         <Stack gap="md">
+          {survey.goal_outcomes && survey.goal_outcomes.length > 0 && (
+            <Paper p="sm" withBorder radius="md">
+              <Group gap="xs" mb="xs">
+                <ThemeIcon size="sm" color="violet" variant="light">
+                  <IconClipboardCheck size={14} />
+                </ThemeIcon>
+                <Text fw={600} size="sm">
+                  Итоги недели
+                </Text>
+              </Group>
+              <Stack gap={0}>
+                {survey.goal_outcomes.map((outcome, i) => (
+                  <GoalOutcomeItem
+                    key={i}
+                    outcome={outcome}
+                    onToggle={(completed) => handleGoalOutcomeToggle(i, completed)}
+                  />
+                ))}
+              </Stack>
+            </Paper>
+          )}
+
           {survey.achievements && survey.achievements.length > 0 && (
             <Paper p="sm" withBorder radius="md">
               <Group gap="xs" mb="xs">
