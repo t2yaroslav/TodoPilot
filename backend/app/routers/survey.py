@@ -43,13 +43,17 @@ async def _get_or_create_survey(user_id, monday, db: AsyncSession) -> WeeklySurv
     return survey
 
 
-async def _get_previous_retrospective(user_id, monday, db: AsyncSession) -> dict | None:
-    """Get the most recent completed survey before this week."""
+async def _get_previous_retrospective(
+    user_id, monday, db: AsyncSession, lookback_days: int = 31,
+) -> dict | None:
+    """Get the most recent completed survey before this week within lookback window."""
+    earliest = monday - timedelta(days=lookback_days)
     result = await db.execute(
         select(WeeklySurvey)
         .where(
             WeeklySurvey.user_id == user_id,
             WeeklySurvey.week_start < monday,
+            WeeklySurvey.week_start >= earliest,
             WeeklySurvey.completed == True,  # noqa: E712
         )
         .order_by(WeeklySurvey.week_start.desc())
@@ -83,6 +87,10 @@ async def survey_status(
     # Fetch previous week's goals for the "Итоги недели" step
     prev_retro = await _get_previous_retrospective(user.id, monday, db)
     prev_goals = prev_retro.get("weekly_goals", []) if prev_retro else []
+    # If previous survey exists but has no goals, inform the user
+    no_goals_msg = None
+    if prev_retro is not None and not prev_goals:
+        no_goals_msg = "В предыдущем обзоре не были указаны цели"
 
     # Check if survey already exists for this week
     result = await db.execute(
@@ -94,7 +102,11 @@ async def survey_status(
     survey = result.scalar_one_or_none()
 
     if survey is None:
-        return SurveyStatusOut(should_show=True, previous_week_goals=prev_goals or None)
+        return SurveyStatusOut(
+            should_show=True,
+            previous_week_goals=prev_goals or None,
+            no_goals_message=no_goals_msg,
+        )
 
     if survey.completed:
         return SurveyStatusOut(
@@ -116,6 +128,7 @@ async def survey_status(
         survey_id=survey.id,
         draft=survey,
         previous_week_goals=prev_goals or None,
+        no_goals_message=no_goals_msg,
     )
 
 

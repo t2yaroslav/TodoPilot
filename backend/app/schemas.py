@@ -226,6 +226,7 @@ class SurveyStatusOut(BaseModel):
     already_dismissed: bool = False
     draft: "SurveyOut | None" = None  # existing draft data
     previous_week_goals: list[str] | None = None  # goals from previous completed survey
+    no_goals_message: str | None = None  # message when previous survey exists but has no goals
 
 
 class GoalOutcome(BaseModel):

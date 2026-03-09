@@ -50,6 +50,7 @@ interface SurveyState {
   // Step 1 data: goal outcomes
   previousWeekGoals: string[]; // goals from previous week (read-only list)
   goalOutcomes: GoalOutcome[]; // user's marks on previous goals
+  noGoalsMessage: string | null; // message when previous survey exists but has no goals
 
   // Step 2-5 data (editable by user)
   achievements: string[];
@@ -101,6 +102,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
   generating: false,
   previousWeekGoals: [],
   goalOutcomes: [],
+  noGoalsMessage: null,
   achievements: [],
   difficulties: [],
   improvements: [],
@@ -114,6 +116,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
       if (data.should_show) {
         const prevGoals: string[] = data.previous_week_goals || [];
         // Load draft data if available
+        const noGoalsMsg: string | null = data.no_goals_message || null;
         if (data.draft) {
           const draftOutcomes: GoalOutcome[] = data.draft.goal_outcomes || [];
           // If draft has no outcomes but there are previous goals, initialize them
@@ -124,6 +127,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
             shouldShow: true,
             previousWeekGoals: prevGoals,
             goalOutcomes: outcomes,
+            noGoalsMessage: noGoalsMsg,
             achievements: data.draft.achievements || [],
             difficulties: data.draft.difficulties || [],
             improvements: data.draft.improvements || [],
@@ -135,6 +139,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
           shouldShow: true,
           previousWeekGoals: prevGoals,
           goalOutcomes: prevGoals.map((g: string) => ({ goal: g, completed: false })),
+          noGoalsMessage: noGoalsMsg,
         });
         return;
       }

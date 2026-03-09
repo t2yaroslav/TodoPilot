@@ -252,12 +252,12 @@ function EditableList({
  * Shows each previous week goal with ✅/❌ toggle buttons.
  */
 function GoalOutcomesChecklist() {
-  const { goalOutcomes, setGoalOutcome } = useSurveyStore();
+  const { goalOutcomes, setGoalOutcome, noGoalsMessage } = useSurveyStore();
 
   if (goalOutcomes.length === 0) {
     return (
       <Text size="sm" c="dimmed">
-        Нет целей прошлой недели для оценки.
+        {noGoalsMessage || 'Нет целей прошлой недели для оценки.'}
       </Text>
     );
   }
@@ -277,9 +277,9 @@ function GoalOutcomesChecklist() {
                 ? 'var(--mantine-color-red-4)'
                 : undefined,
             background: outcome.completed === true
-              ? 'var(--mantine-color-green-0)'
+              ? 'var(--mantine-color-green-light)'
               : outcome.completed === false
-                ? 'var(--mantine-color-red-0)'
+                ? 'var(--mantine-color-red-light)'
                 : undefined,
           }}
         >
@@ -386,7 +386,7 @@ function PreviousStepsSidebar({ currentStep }: { currentStep: number }) {
           Предыдущие ответы
         </Text>
         {completedSteps.map((s) => (
-          <Paper key={s.step} p="xs" withBorder radius="sm" bg="var(--mantine-color-gray-0)">
+          <Paper key={s.step} p="xs" withBorder radius="sm" bg="var(--mantine-color-default)">
             <Group gap={4} mb={4}>
               <ThemeIcon size="xs" color={s.iconColor} variant="light">
                 <s.icon size={12} />
@@ -514,7 +514,7 @@ export function WeeklySurveyWizard() {
           <Text fw={600}>Обзор недели</Text>
         </Group>
       }
-      size={showSidebar ? 'xl' : 'lg'}
+      size={showSidebar ? 900 : 'xl'}
       closeOnClickOutside={false}
     >
       <Stack>
@@ -536,7 +536,7 @@ export function WeeklySurveyWizard() {
                 width: 220,
                 minWidth: 220,
                 flexShrink: 0,
-                borderRight: '1px solid var(--mantine-color-gray-3)',
+                borderRight: '1px solid var(--mantine-color-default-border)',
                 paddingRight: 16,
               }}
             >
