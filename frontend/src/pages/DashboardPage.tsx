@@ -1,266 +1,312 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import axios from 'axios';
 import {
-  Title, Group, Switch, Stack, Paper, Text, SimpleGrid,
-  Center, Loader, Box,
-} from '@mantine/core';
-import {
-  BarChart, Bar, AreaChart, Area, ComposedChart, Line,
+  ResponsiveContainer,
+  AreaChart, Area,
+  BarChart, Bar,
   PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
-import { getDashboard } from '@/api/client';
-import dayjs from 'dayjs';
+import { Box, Text, Paper, SimpleGrid, Group, Badge, Loader, Center, Stack } from '@mantine/core';
+import { IconRefresh } from '@tabler/icons-react';
 
-/* ── Priority colors matching TaskItem checkbox circles ── */
-const PRIORITY_COLORS: Record<string, string> = {
-  p4: '#ff6b6b', // red-5 — urgent + important
-  p3: '#ff922b', // orange-5 — urgent
-  p2: '#339af0', // blue-5 — important
-  p1: '#adb5bd', // gray-5
-  p0: '#ced4da', // gray-4
+interface Project {
+  id: string;
+  title: string;
+  color: string;
+}
+
+interface DashboardData {
+  user_name: string | null;
+  projects: Project[];
+  by_project_per_day: Record<string, number | string>[];
+  by_priority_per_day: Record<string, number | string>[];
+  weekly_by_project: { id: string; title: string; color: string; count: number }[];
+  by_weekday: { day: string; count: number }[];
+  days: number;
+}
+
+const PRIORITY_META: Record<string, { label: string; color: string }> = {
+  p4: { label: 'P1 Срочно', color: '#ef4444' },
+  p3: { label: 'P2 Высокий', color: '#f97316' },
+  p2: { label: 'P3 Средний', color: '#eab308' },
+  p1: { label: 'P4 Низкий', color: '#22c55e' },
+  p0: { label: 'Без приоритета', color: '#64748b' },
 };
 
-const PRIORITY_LABELS: Record<string, string> = {
-  p4: 'Важно и срочно',
-  p3: 'Срочно',
-  p2: 'Важно',
-  p1: 'Обычный',
-  p0: 'Без приоритета',
-};
+const REFRESH_INTERVAL = 60; // seconds
 
-/* ── Helpers ── */
-const isWeekend = (dateStr: string) => {
-  const dow = dayjs(dateStr).day(); // 0=Sun, 6=Sat
-  return dow === 0 || dow === 6;
-};
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Paper
+      p="md"
+      radius="md"
+      style={{
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        height: '100%',
+      }}
+    >
+      <Text size="sm" fw={600} c="dimmed" mb="sm" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+        {title}
+      </Text>
+      {children}
+    </Paper>
+  );
+}
 
-const fmtDate = (d: unknown) =>
-  typeof d === 'string' && d.length > 5 ? d.slice(5) : String(d);
-
-/* ── Component ── */
 export function DashboardPage() {
   const { token } = useParams<{ token: string }>();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [workdaysOnly, setWorkdaysOnly] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!token) return;
-    const load = async () => {
-      try {
-        const res = await getDashboard(token);
-        setData(res.data);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-    const interval = setInterval(load, 60_000);
-    return () => clearInterval(interval);
+    try {
+      const res = await axios.get(`/api/stats/dashboard/${token}`, { params: { days: 30 } });
+      setData(res.data);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (e: any) {
+      setError(e.response?.data?.detail || 'Ошибка загрузки данных');
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
-  const filterDays = useCallback(
-    <T extends { date: string }>(items: T[]): T[] =>
-      workdaysOnly ? items.filter((i) => !isWeekend(i.date)) : items,
-    [workdaysOnly],
-  );
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  /* ── Derived data ── */
-  const projectPerDay = useMemo(
-    () => (data ? filterDays(data.by_project_per_day) : []),
-    [data, filterDays],
-  );
+  // Auto-refresh
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          fetchData();
+          return REFRESH_INTERVAL;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [fetchData]);
 
-  const priorityPerDay = useMemo(
-    () => (data ? filterDays(data.by_priority_per_day) : []),
-    [data, filterDays],
-  );
-
-  const byWeekday = useMemo(() => {
-    if (!data) return [];
-    if (!workdaysOnly) return data.by_weekday;
-    return data.by_weekday.filter(
-      (d: any) => d.day !== 'Сб' && d.day !== 'Вс',
+  if (loading) {
+    return (
+      <Center h="100vh" style={{ backgroundColor: '#0f172a' }}>
+        <Loader color="indigo" size="lg" />
+      </Center>
     );
-  }, [data, workdaysOnly]);
+  }
 
-  /* Trend: daily total bars + 7‑period moving average line */
-  const trendData = useMemo(() => {
-    if (!data) return [];
-    const filtered = filterDays(data.by_project_per_day as any[]);
-    return filtered.map((day: any, idx: number) => {
-      const total = Object.entries(day)
-        .filter(([k]) => k !== 'date')
-        .reduce((s, [, v]) => s + (v as number), 0);
+  if (error || !data) {
+    return (
+      <Center h="100vh" style={{ backgroundColor: '#0f172a' }}>
+        <Stack align="center" gap="xs">
+          <Text size="xl" c="red" fw={600}>Дашборд не найден</Text>
+          <Text c="dimmed">{error}</Text>
+        </Stack>
+      </Center>
+    );
+  }
 
-      const winStart = Math.max(0, idx - 6);
-      const win = filtered.slice(winStart, idx + 1);
-      const avg =
-        win.reduce(
-          (s: number, d: any) =>
-            s +
-            Object.entries(d)
-              .filter(([k]) => k !== 'date')
-              .reduce((a, [, v]) => a + (v as number), 0),
-          0,
-        ) / win.length;
+  const projectIds = data.projects.map((p) => p.id);
+  const projById: Record<string, Project> = {};
+  data.projects.forEach((p) => { projById[p.id] = p; });
 
-      return {
-        date: fmtDate(day.date),
-        total,
-        avg: Math.round(avg * 10) / 10,
-      };
-    });
-  }, [data, filterDays]);
+  // Detect which project keys appear in the data (filter empty ones)
+  const activeProjectIds = projectIds.filter((pid) =>
+    data.by_project_per_day.some((d) => (d[pid] as number) > 0)
+  );
+  const hasInbox = data.by_project_per_day.some((d) => (d['inbox'] as number) > 0);
 
-  /* ── Loading / error states ── */
-  if (loading) return <Center h="100vh"><Loader size="lg" /></Center>;
-  if (!data) return <Center h="100vh"><Text c="dimmed">Дашборд не найден</Text></Center>;
-
-  /* ── Project map ── */
-  const projectsMap: Record<string, { title: string; color: string }> = {};
-  data.projects.forEach((p: any) => { projectsMap[p.id] = { title: p.title, color: p.color }; });
-  projectsMap.inbox = { title: 'Входящие', color: '#94a3b8' };
-  const allProjectIds = data.projects.map((p: any) => p.id).concat('inbox');
+  const axisStyle = { fill: '#94a3b8', fontSize: 11 };
+  const gridStyle = { stroke: 'rgba(255,255,255,0.06)' };
 
   return (
-    <Box p="md" maw={1400} mx="auto">
-      <Stack gap="md">
-        {/* Header */}
-        <Group justify="space-between" align="center">
-          <Title order={3}>Дашборд — {data.user_name}</Title>
-          <Switch
-            label="Будни"
-            checked={workdaysOnly}
-            onChange={(e) => setWorkdaysOnly(e.currentTarget.checked)}
-          />
+    <Box
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#0f172a',
+        color: '#f1f5f9',
+        padding: '16px 20px',
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
+      {/* Header */}
+      <Group justify="space-between" mb="md" align="center">
+        <Group gap="sm">
+          <Text size="lg" fw={700} c="indigo.4">TodoPilot</Text>
+          <Text size="sm" c="dimmed">·</Text>
+          <Text size="sm" fw={500}>{data.user_name}</Text>
+          <Badge variant="light" color="indigo" size="sm">Дашборд</Badge>
         </Group>
+        <Group gap="xs">
+          <IconRefresh size={14} style={{ color: '#475569' }} />
+          <Text size="xs" c="dimmed">
+            Обновлено: {lastUpdated?.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {' · '}через {countdown}с
+          </Text>
+        </Group>
+      </Group>
 
-        {/* Top row: 4 compact charts */}
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-          {/* 1. Tasks by project (stacked area) */}
-          <Paper p="sm" radius="md" withBorder>
-            <Text size="sm" fw={500} mb={4}>
-              Задачи по проектам за {data.days} дней
-            </Text>
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={projectPerDay}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={fmtDate} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                <Tooltip labelFormatter={fmtDate} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {allProjectIds.map((pid: string) => (
-                  <Area
-                    key={pid}
-                    type="monotone"
-                    dataKey={pid}
-                    stackId="1"
-                    fill={projectsMap[pid]?.color || '#888'}
-                    stroke={projectsMap[pid]?.color || '#888'}
-                    name={projectsMap[pid]?.title || pid}
-                  />
+      <SimpleGrid cols={2} spacing="md" style={{ height: 'calc(100vh - 80px)' }}>
+
+        {/* Chart 1: Stacked Area — completed tasks by project per day */}
+        <ChartCard title="Выполненные задачи по проектам (30 дней)">
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={data.by_project_per_day} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                {activeProjectIds.map((pid) => (
+                  <linearGradient key={pid} id={`grad-${pid}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={projById[pid]?.color || '#6366f1'} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={projById[pid]?.color || '#6366f1'} stopOpacity={0.05} />
+                  </linearGradient>
                 ))}
-              </AreaChart>
-            </ResponsiveContainer>
-          </Paper>
+                {hasInbox && (
+                  <linearGradient id="grad-inbox" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.05} />
+                  </linearGradient>
+                )}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" {...gridStyle} />
+              <XAxis dataKey="date" tick={axisStyle} interval={Math.floor(data.by_project_per_day.length / 6)} />
+              <YAxis allowDecimals={false} tick={axisStyle} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: '#94a3b8' }}
+                itemStyle={{ color: '#e2e8f0' }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
+              {activeProjectIds.map((pid) => (
+                <Area
+                  key={pid}
+                  type="monotone"
+                  dataKey={pid}
+                  stackId="a"
+                  stroke={projById[pid]?.color || '#6366f1'}
+                  fill={`url(#grad-${pid})`}
+                  strokeWidth={2}
+                  name={projById[pid]?.title || pid}
+                  dot={false}
+                />
+              ))}
+              {hasInbox && (
+                <Area
+                  type="monotone"
+                  dataKey="inbox"
+                  stackId="a"
+                  stroke="#94a3b8"
+                  fill="url(#grad-inbox)"
+                  strokeWidth={2}
+                  name="Входящие"
+                  dot={false}
+                />
+              )}
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-          {/* 2. Load by priority (stacked bar) */}
-          <Paper p="sm" radius="md" withBorder>
-            <Text size="sm" fw={500} mb={4}>
-              Нагрузка по приоритетам за {data.days} дней
-            </Text>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={priorityPerDay}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={fmtDate} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                <Tooltip labelFormatter={fmtDate} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {['p4', 'p3', 'p2', 'p1', 'p0'].map((key) => (
-                  <Bar
-                    key={key}
-                    dataKey={key}
-                    stackId="1"
-                    fill={PRIORITY_COLORS[key]}
-                    name={PRIORITY_LABELS[key]}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
+        {/* Chart 2: Bar chart — completed tasks by priority per day */}
+        <ChartCard title="Нагрузка по приоритетам (30 дней)">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={data.by_priority_per_day} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" {...gridStyle} />
+              <XAxis dataKey="date" tick={axisStyle} interval={Math.floor(data.by_priority_per_day.length / 6)} />
+              <YAxis allowDecimals={false} tick={axisStyle} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: '#94a3b8' }}
+                itemStyle={{ color: '#e2e8f0' }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
+              {/* Stack bottom→top: no priority → low → medium → high → urgent */}
+              {(['p0', 'p1', 'p2', 'p3', 'p4'] as const).map((key) => (
+                <Bar
+                  key={key}
+                  dataKey={key}
+                  stackId="a"
+                  fill={PRIORITY_META[key].color}
+                  name={PRIORITY_META[key].label}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-          {/* 3. Weekly by project (donut) */}
-          <Paper p="sm" radius="md" withBorder>
-            <Text size="sm" fw={500} mb={4}>За последнюю неделю</Text>
-            <ResponsiveContainer width="100%" height={180}>
+        {/* Chart 3: Donut — weekly by project */}
+        <ChartCard title="Распределение по проектам (7 дней)">
+          {data.weekly_by_project.length === 0 ? (
+            <Center h={260}>
+              <Text c="dimmed" size="sm">Нет данных за неделю</Text>
+            </Center>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={data.weekly_by_project}
-                  dataKey="count"
-                  nameKey="title"
                   cx="50%"
                   cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
+                  innerRadius={65}
+                  outerRadius={100}
+                  dataKey="count"
+                  nameKey="title"
+                  paddingAngle={2}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={{ stroke: '#475569', strokeWidth: 1 }}
                 >
-                  {data.weekly_by_project.map((entry: any, i: number) => (
-                    <Cell key={i} fill={entry.color} />
+                  {data.weekly_by_project.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                  itemStyle={{ color: '#e2e8f0' }}
+                  formatter={(value: number, name: string) => [value, name]}
+                />
               </PieChart>
             </ResponsiveContainer>
-          </Paper>
+          )}
+        </ChartCard>
 
-          {/* 4. By weekday (horizontal bar) */}
-          <Paper p="sm" radius="md" withBorder>
-            <Text size="sm" fw={500} mb={4}>Продуктивность по дням недели</Text>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={byWeekday} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
-                <YAxis type="category" dataKey="day" tick={{ fontSize: 11 }} width={25} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#6366f1" name="Задач" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Paper>
-        </SimpleGrid>
-
-        {/* Bottom: full-width productivity trend */}
-        <Paper p="sm" radius="md" withBorder>
-          <Text size="sm" fw={500} mb={4}>
-            Тренд продуктивности (скользящее среднее за 7 дней)
-          </Text>
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={trendData} barCategoryGap="15%">
-              <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-              <Tooltip />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar
-                dataKey="total"
-                fill="#6366f1"
-                name="Выполнено задач"
-                opacity={0.4}
-                radius={[2, 2, 0, 0]}
+        {/* Chart 4: Horizontal bar — by day of week */}
+        <ChartCard title="Продуктивность по дням недели (30 дней)">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart
+              data={data.by_weekday}
+              layout="vertical"
+              margin={{ top: 5, right: 20, left: 10, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" {...gridStyle} horizontal={false} />
+              <XAxis type="number" allowDecimals={false} tick={axisStyle} />
+              <YAxis type="category" dataKey="day" tick={axisStyle} width={28} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: '#94a3b8' }}
+                itemStyle={{ color: '#e2e8f0' }}
+                formatter={(v: number) => [v, 'Задач']}
               />
-              <Line
-                type="monotone"
-                dataKey="avg"
-                stroke="#e64980"
-                strokeWidth={2}
-                dot={false}
-                name="Среднее (7 дн.)"
-              />
-            </ComposedChart>
+              <Bar dataKey="count" name="Задач" radius={[0, 4, 4, 0]}>
+                {data.by_weekday.map((entry, idx) => {
+                  const max = Math.max(...data.by_weekday.map((d) => d.count));
+                  const ratio = max > 0 ? entry.count / max : 0;
+                  const r = Math.round(99 + ratio * 100);
+                  const g = Math.round(102 + ratio * 50);
+                  const b = Math.round(241 - ratio * 50);
+                  return <Cell key={idx} fill={`rgb(${r},${g},${b})`} />;
+                })}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
-        </Paper>
-      </Stack>
+        </ChartCard>
+
+      </SimpleGrid>
     </Box>
   );
 }
