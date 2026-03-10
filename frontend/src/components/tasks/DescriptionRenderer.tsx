@@ -6,7 +6,7 @@ interface Props {
   size?: 'xs' | 'sm' | 'md';
 }
 
-const URL_REGEX = /(https?:\/\/[^\s<]+)/g;
+const URL_REGEX = /((?:[a-zA-Z][a-zA-Z0-9+.-]*):\/\/[^\s<]+)/g;
 
 function prepareHtml(content: string): string {
   if (/<[a-z][\s\S]*>/i.test(content)) {
@@ -36,7 +36,12 @@ export function DescriptionRenderer({ content, lineClamp, size = 'sm' }: Props) 
     if (link && link.href) {
       e.preventDefault();
       e.stopPropagation();
-      window.open(link.href, '_blank', 'noopener,noreferrer');
+      if (/^https?:\/\//i.test(link.href)) {
+        window.open(link.href, '_blank', 'noopener,noreferrer');
+      } else {
+        // Custom protocol links (obsidian://, tg://, etc.)
+        window.location.href = link.href;
+      }
     }
   };
 
