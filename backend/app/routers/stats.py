@@ -115,7 +115,7 @@ async def get_dashboard(
     all_pids = list(proj_map.keys()) + ["inbox"]
     for i in range(days):
         d = str((since + timedelta(days=i + 1)).date())
-        entry: dict = {"date": d[5:]}  # MM-DD
+        entry: dict = {"date": d}  # YYYY-MM-DD (frontend formats for display)
         for pid in all_pids:
             entry[pid] = proj_day_map.get(d, {}).get(pid, 0)
         by_project_per_day.append(entry)
@@ -139,7 +139,7 @@ async def get_dashboard(
     by_priority_per_day = []
     for i in range(days):
         d = str((since + timedelta(days=i + 1)).date())
-        entry = {"date": d[5:]}
+        entry = {"date": d}  # YYYY-MM-DD (frontend formats for display)
         for p in range(5):
             entry[f"p{p}"] = prio_day_map.get(d, {}).get(f"p{p}", 0)
         by_priority_per_day.append(entry)

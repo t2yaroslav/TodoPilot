@@ -131,6 +131,7 @@ export const deleteGoal = (id: string) => api.delete(`/goals/${id}`);
 // Stats
 export const getProductivity = (days?: number) => api.get('/stats/productivity', { params: { days } });
 export const getDashboardToken = () => api.get('/stats/dashboard-token');
+export const getDashboard = (token: string, days?: number) => api.get(`/stats/dashboard/${token}`, { params: days ? { days } : undefined });
 
 // AI
 export const aiChat = (message: string) => api.post('/ai/chat', { message });
