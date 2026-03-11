@@ -237,7 +237,7 @@ export function DashboardPage() {
 
           {/* Chart 1: Stacked Area — completed tasks by project per day */}
           <ChartCard title="Выполненные задачи по проектам (30 дней)">
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={projectPerDay} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   {activeProjectIds.map((pid) => (
@@ -289,7 +289,7 @@ export function DashboardPage() {
 
           {/* Chart 2: Bar chart — completed tasks by priority per day */}
           <ChartCard title="Нагрузка по приоритетам (30 дней)">
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={200}>
               <BarChart data={priorityPerDay} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" {...gridStyle} />
                 <XAxis dataKey="date" tick={axisStyle} tickFormatter={fmtDate} interval={Math.floor(priorityPerDay.length / 6)} />
@@ -317,7 +317,7 @@ export function DashboardPage() {
                 <Text c="dimmed" size="sm">Нет данных за неделю</Text>
               </Center>
             ) : (
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
                     data={data.weekly_by_project}
@@ -346,7 +346,7 @@ export function DashboardPage() {
 
           {/* Chart 4: Horizontal bar — by day of week */}
           <ChartCard title="Продуктивность по дням недели (30 дней)">
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart
                 data={byWeekday}
                 layout="vertical"
