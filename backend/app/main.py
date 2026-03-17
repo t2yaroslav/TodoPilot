@@ -75,6 +75,10 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE weekly_surveys ADD COLUMN IF NOT EXISTS goal_outcomes JSONB"
         ))
+        # Auto-migrate: add deleted_at column to projects for soft delete
+        await conn.execute(text(
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ"
+        ))
     yield
 
 
