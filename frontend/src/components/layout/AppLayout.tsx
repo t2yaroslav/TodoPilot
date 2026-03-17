@@ -70,60 +70,63 @@ function ProjectNavItem({ project, active, taskCount, onNavigate }: {
   };
 
   return (
-    <NavLink
-      label={project.title}
-      leftSection={<IconHash size={16} color={project.color} />}
-      active={active}
-      onClick={() => onNavigate()}
-      variant="light"
-      rightSection={
-        <Box
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => { if (!menuOpened) setHovered(false); }}
-          style={{ display: 'flex', alignItems: 'center', minWidth: 24, justifyContent: 'center' }}
-        >
-          {hovered || menuOpened ? (
-            <Menu
-              opened={menuOpened}
-              onChange={(opened) => {
-                setMenuOpened(opened);
-                if (!opened) setHovered(false);
-              }}
-              shadow="md"
-              width={180}
-              position="bottom-end"
-            >
-              <Menu.Target>
-                <ActionIcon
-                  size="xs"
-                  variant="subtle"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <IconDots size={14} />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<IconEdit size={14} />}
-                  onClick={(e) => { e.stopPropagation(); handleRename(); }}
-                >
-                  Переименовать
-                </Menu.Item>
-                <Menu.Item
-                  color="red"
-                  leftSection={<IconTrash size={14} />}
-                  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-                >
-                  Удалить
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          ) : (
-            taskCount > 0 && <Text size="xs" c="dimmed">{taskCount}</Text>
-          )}
-        </Box>
-      }
-    />
+    <Box
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { if (!menuOpened) setHovered(false); }}
+    >
+      <NavLink
+        label={project.title}
+        leftSection={<IconHash size={16} color={project.color} />}
+        active={active}
+        onClick={() => onNavigate()}
+        variant="light"
+        rightSection={
+          <Box
+            style={{ display: 'flex', alignItems: 'center', minWidth: 24, justifyContent: 'center' }}
+          >
+            {hovered || menuOpened ? (
+              <Menu
+                opened={menuOpened}
+                onChange={(opened) => {
+                  setMenuOpened(opened);
+                  if (!opened) setHovered(false);
+                }}
+                shadow="md"
+                width={180}
+                position="bottom-end"
+              >
+                <Menu.Target>
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <IconDots size={14} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconEdit size={14} />}
+                    onClick={(e) => { e.stopPropagation(); handleRename(); }}
+                  >
+                    Переименовать
+                  </Menu.Item>
+                  <Menu.Item
+                    color="red"
+                    leftSection={<IconTrash size={14} />}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                  >
+                    Удалить
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            ) : (
+              taskCount > 0 && <Text size="xs" c="dimmed">{taskCount}</Text>
+            )}
+          </Box>
+        }
+      />
+    </Box>
   );
 }
 

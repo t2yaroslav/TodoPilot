@@ -84,6 +84,7 @@ class ProjectOut(BaseModel):
     goal_id: UUID | None
     position: int
     created_at: datetime
+    deleted_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

@@ -10,7 +10,7 @@ export function ProductivityChart() {
 
   useEffect(() => {
     const load = async () => {
-      const [statsRes, projRes] = await Promise.all([getProductivity(parseInt(period)), getProjects()]);
+      const [statsRes, projRes] = await Promise.all([getProductivity(parseInt(period)), getProjects({ include_deleted: true })]);
       setData(statsRes.data);
       const projMap: Record<string, { title: string; color: string }> = {};
       projRes.data.forEach((p: any) => {

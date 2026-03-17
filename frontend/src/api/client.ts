@@ -115,7 +115,7 @@ export const updateTask = (id: string, data: Record<string, unknown>) => api.pat
 export const deleteTask = (id: string) => api.delete(`/tasks/${id}`);
 
 // Projects
-export const getProjects = () => api.get('/projects');
+export const getProjects = (params?: { include_deleted?: boolean }) => api.get('/projects', { params });
 export const getProjectTaskCounts = () => api.get('/projects/task-counts');
 export const createProject = (data: Record<string, unknown>) => api.post('/projects', data);
 export const updateProject = (id: string, data: Record<string, unknown>) => api.patch(`/projects/${id}`, data);

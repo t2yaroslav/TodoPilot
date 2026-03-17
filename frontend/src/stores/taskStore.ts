@@ -25,6 +25,7 @@ export interface Project {
   goal_id: string | null;
   position: number;
   created_at: string;
+  deleted_at: string | null;
 }
 
 export interface Goal {
@@ -194,9 +195,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   addProject: async (projData) => {
-    // Auto-assign color if not provided
+    // Auto-assign color if not provided (only consider active projects)
     if (!projData.color) {
-      const existingColors = get().projects.map((p) => p.color);
+      const existingColors = get().projects.filter((p) => !p.deleted_at).map((p) => p.color);
       projData = { ...projData, color: pickNextProjectColor(existingColors) };
     }
     const { data } = await api.createProject(projData);
@@ -210,8 +211,14 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   removeProject: async (id) => {
-    await api.deleteProject(id);
-    set({ projects: get().projects.filter((p) => p.id !== id) });
+    const { data } = await api.deleteProject(id);
+    if (data.soft_deleted) {
+      // Soft deleted — remove from sidebar list
+      set({ projects: get().projects.filter((p) => p.id !== id) });
+    } else {
+      // Hard deleted
+      set({ projects: get().projects.filter((p) => p.id !== id) });
+    }
   },
 
   fetchGoals: async () => {

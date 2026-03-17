@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,6 +12,8 @@ from .auth import get_current_user
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
+DELETED_PROJECT_COLOR = "#9ca3af"
+
 
 @router.get("/task-counts")
 async def project_task_counts(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -23,10 +26,15 @@ async def project_task_counts(user: User = Depends(get_current_user), db: AsyncS
 
 
 @router.get("", response_model=list[ProjectOut])
-async def list_projects(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Project).where(Project.user_id == user.id).order_by(Project.position, Project.created_at)
-    )
+async def list_projects(
+    include_deleted: bool = False,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Project).where(Project.user_id == user.id)
+    if not include_deleted:
+        query = query.where(Project.deleted_at == None)  # noqa: E711
+    result = await db.execute(query.order_by(Project.position, Project.created_at))
     return result.scalars().all()
 
 
@@ -51,10 +59,27 @@ async def update_project(project_id: UUID, body: ProjectUpdate, user: User = Dep
     return project
 
 
-@router.delete("/{project_id}", status_code=204)
+@router.delete("/{project_id}")
 async def delete_project(project_id: UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     project = await db.get(Project, project_id)
     if not project or project.user_id != user.id:
         raise HTTPException(status_code=404)
-    await db.delete(project)
-    await db.commit()
+
+    # Check if project has any linked tasks
+    task_count_result = await db.execute(
+        select(func.count(Task.id)).where(Task.project_id == project_id)
+    )
+    task_count = task_count_result.scalar() or 0
+
+    if task_count > 0:
+        # Soft delete: mark as deleted, set inactive color
+        project.deleted_at = datetime.now(timezone.utc)
+        project.color = DELETED_PROJECT_COLOR
+        await db.commit()
+        await db.refresh(project)
+        return {"soft_deleted": True, "id": str(project.id)}
+    else:
+        # Hard delete: no tasks linked
+        await db.delete(project)
+        await db.commit()
+        return {"soft_deleted": False, "id": str(project.id)}
