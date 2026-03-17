@@ -1,31 +1,8 @@
 services:
-  postgres:
-    image: postgres:18-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-todopilot}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-todopilot}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   backend:
     build: ./backend
     restart: unless-stopped
     env_file: .env
-    environment:
-      # Override DATABASE_URL: inside Docker network use service name "postgres", not "localhost"
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-todopilot}
-    depends_on:
-      postgres:
-        condition: service_healthy
     ports:
       - "8000:8000"
 
@@ -45,6 +22,3 @@ services:
     depends_on:
       - backend
       - frontend
-
-volumes:
-  pgdata:
