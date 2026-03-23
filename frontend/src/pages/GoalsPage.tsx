@@ -6,7 +6,6 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
-  addEdge,
   Handle,
   Position,
   type Node,
@@ -352,7 +351,9 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
 // ─── Deletable Edge ──────────────────────────────────────────────────────────
 
 interface DeletableEdgeData {
-  onDelete: (edgeId: string) => void;
+  onDelete: (edgeId: string, source: string, target: string) => void;
+  edgeSource: string;
+  edgeTarget: string;
   [key: string]: unknown;
 }
 
@@ -424,7 +425,7 @@ function DeletableEdge({
               color="red"
               size="xs"
               radius="xl"
-              onClick={() => data?.onDelete(id)}
+              onClick={() => data?.onDelete(id, data.edgeSource, data.edgeTarget)}
             >
               <IconTrash size={10} />
             </ActionIcon>
@@ -602,27 +603,24 @@ function GoalsGraph() {
     await Promise.all([fetchProjects(), fetchGoalStats()]);
   }, [editProject, fetchProjects, fetchGoalStats]);
 
-  const handleEdgeDelete = useCallback(async (edgeId: string) => {
-    const edge = edges.find((e) => e.id === edgeId);
-    if (!edge) return;
-
-    if (edge.id.startsWith('goal-')) {
+  const handleEdgeDelete = useCallback(async (edgeId: string, source: string, target: string) => {
+    if (edgeId.startsWith('goal-')) {
       // Goal → Goal edge: unlink child
-      await editGoal(edge.target, { parent_goal_id: null });
-    } else if (edge.id.startsWith('proj-')) {
+      await editGoal(target, { parent_goal_id: null });
+    } else if (edgeId.startsWith('proj-')) {
       // Goal → Project edge: unlink project
-      const projectId = edge.target.replace('project-', '');
+      const projectId = target.replace('project-', '');
       await editProject(projectId, { goal_id: null });
     }
     await Promise.all([fetchGoals(), fetchProjects(), fetchGoalStats()]);
-  }, [edges, editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
+  }, [editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
 
-  // Build nodes and edges from data
-  const buildGraph = useCallback(() => {
+  // Helper: compute edges and nodes from current store data
+  const computeNodesAndEdges = useCallback(() => {
     const { goals: g, goalStats: gs, projects: p, tasks: t } = useTaskStore.getState();
     const activeProjects = p.filter((pr) => !pr.deleted_at);
 
-    // Build edges first to determine orphan status
+    // Build edges
     const newEdges: Edge[] = [];
 
     // Goal → Goal edges (parent → child)
@@ -633,7 +631,7 @@ function GoalsGraph() {
           source: goal.parent_goal_id,
           target: goal.id,
           type: 'deletable',
-          data: { onDelete: handleEdgeDelete },
+          data: { onDelete: handleEdgeDelete, edgeSource: goal.parent_goal_id, edgeTarget: goal.id },
           markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
         });
       }
@@ -647,7 +645,7 @@ function GoalsGraph() {
           source: proj.goal_id,
           target: `project-${proj.id}`,
           type: 'deletable',
-          data: { onDelete: handleEdgeDelete },
+          data: { onDelete: handleEdgeDelete, edgeSource: proj.goal_id, edgeTarget: `project-${proj.id}` },
           markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
         });
       }
@@ -710,25 +708,58 @@ function GoalsGraph() {
       };
     });
 
-    const allNodes = [...goalNodes, ...projectNodes];
-    const layouted = getLayoutedElements(allNodes, newEdges);
+    return { nodes: [...goalNodes, ...projectNodes], edges: newEdges };
+  }, [handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
 
+  // Full layout: positions all nodes via Dagre. Called on button click and initial load.
+  const applyLayout = useCallback(() => {
+    const { nodes: newNodes, edges: newEdges } = computeNodesAndEdges();
+    const layouted = getLayoutedElements(newNodes, newEdges);
     setNodes(layouted.nodes);
     setEdges(layouted.edges);
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2 });
+    }, 50);
+  }, [computeNodesAndEdges, setNodes, setEdges, reactFlowInstance]);
 
-    // Fit view on initial load
-    if (initialLoadRef.current && layouted.nodes.length > 0) {
-      initialLoadRef.current = false;
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.2 });
-      }, 50);
-    }
-  }, [handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete, setNodes, setEdges, reactFlowInstance]);
+  // Data-only update: updates node data and edges without resetting positions.
+  // New nodes (not yet on canvas) get placed via Dagre.
+  const syncData = useCallback(() => {
+    const { nodes: newNodes, edges: newEdges } = computeNodesAndEdges();
 
-  // Rebuild graph when data changes
+    setNodes((prevNodes) => {
+      const existingPositions = new Map(prevNodes.map((n) => [n.id, n.position]));
+      const currentIds = new Set(prevNodes.map((n) => n.id));
+      const addedNodes = newNodes.filter((n) => !currentIds.has(n.id));
+
+      // If there are new nodes, run dagre to get positions for them
+      let newNodePositions = new Map<string, { x: number; y: number }>();
+      if (addedNodes.length > 0) {
+        const layouted = getLayoutedElements(newNodes, newEdges);
+        newNodePositions = new Map(layouted.nodes.map((n) => [n.id, n.position]));
+      }
+
+      return newNodes.map((node) => ({
+        ...node,
+        position: existingPositions.get(node.id) || newNodePositions.get(node.id) || node.position,
+      }));
+    });
+    setEdges(newEdges);
+  }, [computeNodesAndEdges, setNodes, setEdges]);
+
+  // Initial layout on first data load
   useEffect(() => {
-    buildGraph();
-  }, [goals, goalStats, projects, tasks, buildGraph]);
+    if (initialLoadRef.current && (goals.length > 0 || projects.some((p) => !p.deleted_at))) {
+      initialLoadRef.current = false;
+      applyLayout();
+    }
+  }, [goals, projects, applyLayout]);
+
+  // Sync node data when store data changes (without resetting positions)
+  useEffect(() => {
+    if (initialLoadRef.current) return; // skip before initial layout
+    syncData();
+  }, [goals, goalStats, projects, tasks, syncData]);
 
   // Handle new connections (drag-to-connect)
   const onConnect = useCallback(async (connection: Connection) => {
@@ -738,10 +769,8 @@ function GoalsGraph() {
     const targetIsGoal = !targetIsProject;
 
     if (targetIsGoal) {
-      // Source goal → Target goal: set parent_goal_id on target
       await editGoal(connection.target, { parent_goal_id: connection.source });
     } else {
-      // Source goal → Target project: set goal_id on project
       const projectId = connection.target.replace('project-', '');
       await editProject(projectId, { goal_id: connection.source });
     }
@@ -750,16 +779,13 @@ function GoalsGraph() {
   }, [editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
 
   const handleAutoLayout = useCallback(() => {
-    buildGraph();
-    setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
-    }, 50);
-  }, [buildGraph, reactFlowInstance]);
+    applyLayout();
+  }, [applyLayout]);
 
   const hasData = goals.length > 0 || projects.filter((p) => !p.deleted_at).length > 0;
 
   return (
-    <Stack style={{ height: 'calc(100vh - 120px)' }} gap="xs">
+    <Stack style={{ height: 'calc(100vh - 80px)' }} gap="xs">
       {/* Header */}
       <Group justify="space-between">
         <div>

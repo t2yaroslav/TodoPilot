@@ -304,7 +304,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               style={{ position: 'absolute', top: 0, left: 0, zIndex: 10 }}
               title="Свернуть/развернуть сайдбар"
             />
-            <Box maw={960} mx="auto" className={classes.content}>{children}</Box>
+            <Box maw={location.pathname === '/goals' ? undefined : 960} mx="auto" className={classes.content}>{children}</Box>
           </Box>
         </AppShell.Main>
       </AppShell>
