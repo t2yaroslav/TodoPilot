@@ -80,17 +80,20 @@ async def survey_status(
     today = date.today()
     monday = _current_week_monday()
 
-    # Only show on Monday
-    if today.weekday() != 0:
-        return SurveyStatusOut(should_show=False)
-
-    # Fetch previous week's goals for the "Итоги недели" step
+    # Always fetch previous week's goals (needed for manual wizard opening too)
     prev_retro = await _get_previous_retrospective(user.id, monday, db)
     prev_goals = prev_retro.get("weekly_goals", []) if prev_retro else []
-    # If previous survey exists but has no goals, inform the user
     no_goals_msg = None
     if prev_retro is not None and not prev_goals:
         no_goals_msg = "В предыдущем обзоре не были указаны цели"
+
+    # Only auto-show on Monday
+    if today.weekday() != 0:
+        return SurveyStatusOut(
+            should_show=False,
+            previous_week_goals=prev_goals or None,
+            no_goals_message=no_goals_msg,
+        )
 
     # Check if survey already exists for this week
     result = await db.execute(
@@ -113,6 +116,8 @@ async def survey_status(
             should_show=False,
             survey_id=survey.id,
             already_completed=True,
+            previous_week_goals=prev_goals or None,
+            no_goals_message=no_goals_msg,
         )
 
     if survey.dismissed:
@@ -120,6 +125,8 @@ async def survey_status(
             should_show=False,
             survey_id=survey.id,
             already_dismissed=True,
+            previous_week_goals=prev_goals or None,
+            no_goals_message=no_goals_msg,
         )
 
     # Survey exists but not completed/dismissed - show it with draft data
