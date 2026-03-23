@@ -143,7 +143,16 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
         });
         return;
       }
-      set({ shouldShow: data.should_show });
+      // Even when should_show is false (completed/dismissed), store previous goals
+      // so that manually opened wizard can show goal outcomes step
+      const prevGoals: string[] = data.previous_week_goals || [];
+      const noGoalsMsg: string | null = data.no_goals_message || null;
+      set({
+        shouldShow: data.should_show,
+        previousWeekGoals: prevGoals,
+        goalOutcomes: prevGoals.map((g: string) => ({ goal: g, completed: null })),
+        noGoalsMessage: noGoalsMsg,
+      });
     } catch {
       set({ shouldShow: false });
     }
@@ -203,13 +212,20 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
         [step]: { deps: currentDeps, done: true },
       };
 
-      // Pre-fill with suggestions
-      if (step === 2 && get().achievements.length === 0) {
-        set({ achievements: suggestions, genSnapshots: newSnapshots, generating: false });
+      // Prepend AI suggestions to existing user items (deduplicate)
+      const currentState = get();
+      const mergeUnique = (aiItems: string[], userItems: string[]) => {
+        const existing = new Set(userItems.map(s => s.trim().toLowerCase()));
+        const newItems = aiItems.filter(s => !existing.has(s.trim().toLowerCase()));
+        return [...newItems, ...userItems];
+      };
+
+      if (step === 2) {
+        set({ achievements: mergeUnique(suggestions, currentState.achievements), genSnapshots: newSnapshots, generating: false });
       } else if (step === 4) {
-        set({ improvements: suggestions, genSnapshots: newSnapshots, generating: false });
+        set({ improvements: mergeUnique(suggestions, currentState.improvements), genSnapshots: newSnapshots, generating: false });
       } else if (step === 5) {
-        set({ weeklyGoals: suggestions, genSnapshots: newSnapshots, generating: false });
+        set({ weeklyGoals: mergeUnique(suggestions, currentState.weeklyGoals), genSnapshots: newSnapshots, generating: false });
       } else {
         set({ genSnapshots: newSnapshots, generating: false });
       }
