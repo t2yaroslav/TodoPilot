@@ -6,7 +6,6 @@ import {
   Button,
   Group,
   ActionIcon,
-  Loader,
   Paper,
   Stepper,
   Box,
@@ -15,6 +14,7 @@ import {
   ThemeIcon,
   Tooltip,
 } from '@mantine/core';
+import { AIProgressBar } from '@/components/ai/AIProgressBar';
 import {
   IconX,
   IconSparkles,
@@ -580,15 +580,14 @@ export function WeeklySurveyWizard() {
               </Stack>
             </Paper>
 
-            {/* AI status / regenerate button */}
+            {/* AI progress bar / regenerate button */}
             {stepConfig.hasAI && (
               generating ? (
-                <Group gap="xs" justify="center" mt="xs">
-                  <Loader size="xs" color="indigo" />
-                  <Text size="xs" c="dimmed">
-                    {stepConfig.aiHint}
-                  </Text>
-                </Group>
+                <AIProgressBar
+                  operationType={`survey_generate_step_${currentStep}`}
+                  active={generating}
+                  hint={stepConfig.aiHint}
+                />
               ) : (
                 <Button
                   variant="subtle"

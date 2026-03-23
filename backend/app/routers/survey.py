@@ -230,6 +230,7 @@ async def generate_suggestions(
     previous_retrospective = await _get_previous_retrospective(user.id, monday, db)
 
     # Submit LLM call to background queue (returns immediately)
+    op_type = f"survey_generate_step_{body.step}"
     task_id = await task_queue.submit(
         ai_service.generate_survey_step(
             step=body.step,
@@ -238,7 +239,8 @@ async def generate_suggestions(
             user_profile=user.profile_text,
             previous_answers=previous_answers if previous_answers else None,
             previous_retrospective=previous_retrospective,
-        )
+        ),
+        operation_type=op_type,
     )
     return {"task_id": task_id}
 

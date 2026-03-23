@@ -119,6 +119,16 @@ class WeeklySurvey(Base):
     user = relationship("User", back_populates="weekly_surveys")
 
 
+class OperationTiming(Base):
+    """Tracks duration of long-running operations (AI calls, etc.) for progress estimation."""
+    __tablename__ = "operation_timings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    operation_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Feedback(Base):
     __tablename__ = "feedback"
 

@@ -79,6 +79,18 @@ async def lifespan(app: FastAPI):
         await conn.execute(text(
             "ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ"
         ))
+        # Auto-migrate: create operation_timings table if missing
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS operation_timings (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                operation_type VARCHAR(100) NOT NULL,
+                duration_ms INTEGER NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_operation_timings_operation_type ON operation_timings (operation_type)"
+        ))
     yield
 
 

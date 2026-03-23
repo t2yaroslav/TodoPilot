@@ -101,6 +101,10 @@ export async function submitAndPoll<T = unknown>(
   return pollAITask<T>(data.task_id, intervalMs);
 }
 
+// Operation timing
+export const getAvgDuration = (operationType: string) =>
+  api.get<{ avg_duration_ms: number | null }>(`/ai-tasks/avg-duration/${encodeURIComponent(operationType)}`);
+
 // Auth
 export const sendCode = (email: string) => api.post('/auth/send-code', { email });
 export const verifyCode = (email: string, code: string) => api.post('/auth/verify', { email, code });

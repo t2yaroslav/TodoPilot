@@ -17,17 +17,23 @@ _tasks: dict[str, dict[str, Any]] = {}
 _TTL = timedelta(minutes=10)
 
 
-async def submit(coro: Coroutine) -> str:
-    """Start an async coroutine in the background, return task_id immediately."""
+async def submit(coro: Coroutine, operation_type: str | None = None) -> str:
+    """Start an async coroutine in the background, return task_id immediately.
+
+    If operation_type is provided, the duration will be recorded in
+    the operation_timings table when the task finishes.
+    """
     task_id = str(uuid.uuid4())
     _tasks[task_id] = {
         "status": "running",
         "result": None,
         "error": None,
         "created_at": datetime.utcnow(),
+        "operation_type": operation_type,
     }
 
     async def _run():
+        start = datetime.utcnow()
         try:
             result = await coro
             _tasks[task_id]["status"] = "done"
@@ -36,9 +42,28 @@ async def submit(coro: Coroutine) -> str:
             _tasks[task_id]["status"] = "error"
             _tasks[task_id]["error"] = str(e)
 
+        # Record timing if operation_type was specified
+        if operation_type:
+            duration_ms = int((datetime.utcnow() - start).total_seconds() * 1000)
+            try:
+                await _record_timing(operation_type, duration_ms)
+            except Exception:
+                pass  # non-critical
+
     asyncio.create_task(_run())
     _cleanup_old()
     return task_id
+
+
+async def _record_timing(operation_type: str, duration_ms: int):
+    """Persist operation duration to DB for progress estimation."""
+    from ..database import async_session
+    from ..models import OperationTiming
+
+    async with async_session() as session:
+        timing = OperationTiming(operation_type=operation_type, duration_ms=duration_ms)
+        session.add(timing)
+        await session.commit()
 
 
 def get(task_id: str) -> dict[str, Any] | None:
