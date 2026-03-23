@@ -215,13 +215,14 @@ export function DatePickerMenu({ value, onChange, recurrence, onRecurrenceChange
       position="bottom-start"
       withinPortal={withinPortal}
       closeOnItemClick={false}
+      middlewares={{ flip: true, shift: true, inline: false }}
     >
       <Menu.Target>
         <Box style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); setOpened(!opened); }}>
           {children}
         </Box>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown mah="calc(100vh - 16px)" style={{ overflowY: 'auto' }}>
         {/* ── Quick date input ── */}
         <Box px="xs" pt="xs" pb={4}>
           <TextInput

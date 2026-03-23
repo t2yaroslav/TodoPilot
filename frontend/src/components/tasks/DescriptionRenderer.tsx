@@ -8,19 +8,33 @@ interface Props {
 
 const URL_REGEX = /((?:[a-zA-Z][a-zA-Z0-9+.-]*):\/\/[^\s<]+)/g;
 
+/** Linkify URLs that are not already inside an <a> tag. */
+function linkifyUrls(html: string): string {
+  // Split by existing <a ...>...</a> tags to avoid double-linkifying
+  const parts = html.split(/(<a\s[^>]*>[\s\S]*?<\/a>)/gi);
+  return parts
+    .map((part) => {
+      // Odd parts are existing <a> tags – keep as-is
+      if (/^<a\s/i.test(part)) return part;
+      return part.replace(
+        URL_REGEX,
+        '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+      );
+    })
+    .join('');
+}
+
 function prepareHtml(content: string): string {
   if (/<[a-z][\s\S]*>/i.test(content)) {
-    return content;
+    // HTML content (e.g. from rich text editor) – still linkify bare URLs
+    return linkifyUrls(content);
   }
   // Plain text fallback: escape HTML, auto-linkify URLs, preserve newlines
   const escaped = content
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-  const linkified = escaped.replace(
-    URL_REGEX,
-    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
-  );
+  const linkified = linkifyUrls(escaped);
   return linkified
     .split('\n')
     .map((line) => `<p>${line || '<br>'}</p>`)
