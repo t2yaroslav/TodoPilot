@@ -1,44 +1,452 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Handle,
+  Position,
+  type Node,
+  type Edge,
+  type Connection,
+  type NodeTypes,
+  type EdgeTypes,
+  type NodeProps,
+  MarkerType,
+  BaseEdge,
+  EdgeLabelRenderer,
+  getBezierPath,
+  useReactFlow,
+  ReactFlowProvider,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import dagre from '@dagrejs/dagre';
 import {
   Title,
   Stack,
-  Paper,
   Group,
   Text,
-  ActionIcon,
-  TextInput,
   Button,
-  Progress,
-  Badge,
-  ColorSwatch,
-  Menu,
   Modal,
+  TextInput,
   Select,
   ColorInput,
-  Box,
+  Paper,
+  Badge,
+  Progress,
+  ActionIcon,
+  Menu,
   ThemeIcon,
-  RingProgress,
-  Collapse,
-  UnstyledButton,
-  Divider,
+  Box,
 } from '@mantine/core';
 import {
   IconPlus,
-  IconDots,
+  IconTarget,
+  IconFolder,
   IconEdit,
   IconTrash,
-  IconTarget,
-  IconChevronDown,
-  IconChevronRight,
+  IconQuestionMark,
+  IconDots,
   IconLink,
-  IconTrophy,
+  IconLinkOff,
+  IconLayoutDistributeVertical,
+  IconSubtask,
 } from '@tabler/icons-react';
-import { useTaskStore, Goal, GoalStats, Task, Project } from '@/stores/taskStore';
+import { useTaskStore, Goal, Project, Task } from '@/stores/taskStore';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const GOAL_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
   '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
 ];
+
+const NODE_WIDTH = 220;
+const GOAL_NODE_HEIGHT = 120;
+const PROJECT_NODE_HEIGHT = 80;
+
+// ─── Aggregated stats helper ─────────────────────────────────────────────────
+
+interface AggStats {
+  total: number;
+  completed: number;
+}
+
+function getAggregatedStats(
+  goalId: string,
+  goals: Goal[],
+  goalStats: Record<string, { total_tasks: number; completed_tasks: number }>,
+  projects: Project[],
+  tasks: Task[],
+  visited: Set<string> = new Set(),
+): AggStats {
+  if (visited.has(goalId)) return { total: 0, completed: 0 };
+  visited.add(goalId);
+
+  const direct = goalStats[goalId];
+  let total = direct?.total_tasks || 0;
+  let completed = direct?.completed_tasks || 0;
+
+  // Tasks from linked projects (that aren't already counted via goal_id)
+  const linkedProjects = projects.filter((p) => p.goal_id === goalId);
+  for (const proj of linkedProjects) {
+    const projTasks = tasks.filter(
+      (t) => t.project_id === proj.id && t.goal_id !== goalId,
+    );
+    total += projTasks.length;
+    completed += projTasks.filter((t) => t.completed).length;
+  }
+
+  // Recursively add children
+  const children = goals.filter((g) => g.parent_goal_id === goalId);
+  for (const child of children) {
+    const childStats = getAggregatedStats(child.id, goals, goalStats, projects, tasks, visited);
+    total += childStats.total;
+    completed += childStats.completed;
+  }
+
+  return { total, completed };
+}
+
+// ─── Dagre layout ────────────────────────────────────────────────────────────
+
+function getLayoutedElements(
+  nodes: Node[],
+  edges: Edge[],
+): { nodes: Node[]; edges: Edge[] } {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+
+  // Separate connected and unconnected nodes
+  const connectedIds = new Set<string>();
+  edges.forEach((e) => {
+    connectedIds.add(e.source);
+    connectedIds.add(e.target);
+  });
+
+  const connectedNodes = nodes.filter((n) => connectedIds.has(n.id));
+  const unconnectedNodes = nodes.filter((n) => !connectedIds.has(n.id));
+
+  // Layout connected nodes with dagre
+  g.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 80, marginx: 40, marginy: 40 });
+
+  connectedNodes.forEach((node) => {
+    const height = node.type === 'goalNode' ? GOAL_NODE_HEIGHT : PROJECT_NODE_HEIGHT;
+    g.setNode(node.id, { width: NODE_WIDTH, height });
+  });
+
+  edges.forEach((edge) => {
+    g.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(g);
+
+  const layoutedConnected = connectedNodes.map((node) => {
+    const pos = g.node(node.id);
+    const height = node.type === 'goalNode' ? GOAL_NODE_HEIGHT : PROJECT_NODE_HEIGHT;
+    return {
+      ...node,
+      position: {
+        x: pos.x - NODE_WIDTH / 2,
+        y: pos.y - height / 2,
+      },
+    };
+  });
+
+  // Place unconnected nodes to the right
+  const graphWidth = connectedNodes.length > 0
+    ? Math.max(...layoutedConnected.map((n) => n.position.x + NODE_WIDTH)) + 80
+    : 0;
+
+  const layoutedUnconnected = unconnectedNodes.map((node, idx) => {
+    const cols = 3;
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    return {
+      ...node,
+      position: {
+        x: graphWidth + col * (NODE_WIDTH + 40),
+        y: row * (GOAL_NODE_HEIGHT + 40) + 40,
+      },
+    };
+  });
+
+  return {
+    nodes: [...layoutedConnected, ...layoutedUnconnected],
+    edges,
+  };
+}
+
+// ─── Custom Goal Node ────────────────────────────────────────────────────────
+
+interface GoalNodeData {
+  label: string;
+  color: string;
+  goalType: string;
+  total: number;
+  completed: number;
+  isOrphan: boolean;
+  goalId: string;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onAddChild: (id: string) => void;
+  onUnlink: (id: string) => void;
+  hasParent: boolean;
+  [key: string]: unknown;
+}
+
+function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
+  const progress = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+
+  return (
+    <Paper
+      p="xs"
+      radius="md"
+      withBorder
+      style={{
+        borderLeft: `4px solid ${data.color}`,
+        width: NODE_WIDTH,
+        minHeight: GOAL_NODE_HEIGHT,
+        background: 'var(--mantine-color-body)',
+        position: 'relative',
+      }}
+    >
+      <Handle type="target" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
+
+      {data.isOrphan && (
+        <ThemeIcon
+          variant="light"
+          color="yellow"
+          size="sm"
+          radius="xl"
+          style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
+        >
+          <IconQuestionMark size={12} />
+        </ThemeIcon>
+      )}
+
+      <Group justify="space-between" mb={4} wrap="nowrap">
+        <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
+          <ThemeIcon variant="light" color={data.color} size="sm" radius="xl">
+            <IconTarget size={14} />
+          </ThemeIcon>
+          <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.3 }}>
+            {data.label}
+          </Text>
+        </Group>
+        <Menu shadow="md" width={160} position="bottom-end" withinPortal>
+          <Menu.Target>
+            <ActionIcon variant="subtle" size="xs" className="nodrag">
+              <IconDots size={14} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item leftSection={<IconSubtask size={14} />} onClick={() => data.onAddChild(data.goalId)}>
+              Подцель
+            </Menu.Item>
+            <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => data.onEdit(data.goalId)}>
+              Редактировать
+            </Menu.Item>
+            {data.hasParent && (
+              <Menu.Item leftSection={<IconLinkOff size={14} />} onClick={() => data.onUnlink(data.goalId)}>
+                Отвязать
+              </Menu.Item>
+            )}
+            <Menu.Divider />
+            <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => data.onDelete(data.goalId)}>
+              Удалить
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
+
+      <Badge size="xs" variant="light" color={data.goalType === 'yearly' ? 'orange' : 'blue'} mb={4}>
+        {data.goalType === 'yearly' ? 'Год' : 'Квартал'}
+      </Badge>
+
+      <Group justify="space-between" mb={2}>
+        <Text size="xs" c="dimmed">
+          {data.completed}/{data.total} задач
+        </Text>
+        <Text size="xs" fw={600} c={progress === 100 ? 'green' : undefined}>
+          {progress}%
+        </Text>
+      </Group>
+      <Progress value={progress} color={progress === 100 ? 'green' : data.color} size="xs" radius="xl" />
+
+      <Handle type="source" position={Position.Bottom} style={{ background: data.color, width: 10, height: 10 }} />
+    </Paper>
+  );
+}
+
+// ─── Custom Project Node ─────────────────────────────────────────────────────
+
+interface ProjectNodeData {
+  label: string;
+  color: string;
+  total: number;
+  completed: number;
+  isOrphan: boolean;
+  projectId: string;
+  onUnlink: (id: string) => void;
+  hasGoal: boolean;
+  [key: string]: unknown;
+}
+
+function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
+  return (
+    <Paper
+      p="xs"
+      radius="md"
+      withBorder
+      style={{
+        borderLeft: `4px solid ${data.color}`,
+        width: NODE_WIDTH,
+        minHeight: PROJECT_NODE_HEIGHT,
+        background: 'var(--mantine-color-body)',
+        position: 'relative',
+      }}
+    >
+      <Handle type="target" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
+
+      {data.isOrphan && (
+        <ThemeIcon
+          variant="light"
+          color="yellow"
+          size="sm"
+          radius="xl"
+          style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
+        >
+          <IconQuestionMark size={12} />
+        </ThemeIcon>
+      )}
+
+      <Group justify="space-between" mb={4} wrap="nowrap">
+        <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
+          <ThemeIcon variant="light" color={data.color} size="sm" radius="xl">
+            <IconFolder size={14} />
+          </ThemeIcon>
+          <Text size="xs" fw={600} lineClamp={1}>
+            {data.label}
+          </Text>
+        </Group>
+        {data.hasGoal && (
+          <ActionIcon variant="subtle" size="xs" className="nodrag" onClick={() => data.onUnlink(data.projectId)}>
+            <IconLinkOff size={14} />
+          </ActionIcon>
+        )}
+      </Group>
+
+      <Text size="xs" c="dimmed">
+        {data.completed}/{data.total} задач
+      </Text>
+
+      {/* Projects don't have source handle — they are leaf nodes */}
+    </Paper>
+  );
+}
+
+// ─── Deletable Edge ──────────────────────────────────────────────────────────
+
+interface DeletableEdgeData {
+  onDelete: (edgeId: string) => void;
+  [key: string]: unknown;
+}
+
+function DeletableEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  data,
+  markerEnd,
+}: {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  sourcePosition: Position;
+  targetPosition: Position;
+  data?: DeletableEdgeData;
+  markerEnd?: string;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+
+  return (
+    <>
+      {/* Invisible wider path for hover detection */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      />
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={{
+          stroke: hovered ? 'var(--mantine-color-red-5)' : 'var(--mantine-color-dimmed)',
+          strokeWidth: hovered ? 2 : 1.5,
+          opacity: hovered ? 1 : 0.6,
+        }}
+      />
+      {hovered && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: 'all',
+            }}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+          >
+            <ActionIcon
+              variant="filled"
+              color="red"
+              size="xs"
+              radius="xl"
+              onClick={() => data?.onDelete(id)}
+            >
+              <IconTrash size={10} />
+            </ActionIcon>
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+// ─── Node & Edge types ───────────────────────────────────────────────────────
+
+const nodeTypes: NodeTypes = {
+  goalNode: GoalNodeComponent,
+  projectNode: ProjectNodeComponent,
+};
+
+const edgeTypes: EdgeTypes = {
+  deletable: DeletableEdge as unknown as EdgeTypes[string],
+};
+
+// ─── Create/Edit Forms ───────────────────────────────────────────────────────
 
 function GoalCreateForm({ onClose, parentGoalId }: { onClose: () => void; parentGoalId?: string }) {
   const { addGoal, fetchGoals, fetchGoalStats } = useTaskStore();
@@ -140,405 +548,295 @@ function GoalEditForm({ goal, onClose }: { goal: Goal; onClose: () => void }) {
   );
 }
 
-function LinkModal({
-  opened,
-  onClose,
-  goal,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  goal: Goal;
-}) {
-  const { projects, tasks, fetchTasks, editProject, editTask, fetchGoalStats, fetchProjects } = useTaskStore();
-  const [mode, setMode] = useState<'project' | 'task'>('project');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+// ─── Main Graph Component ────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (opened) {
-      fetchTasks({ completed: false });
-    }
-  }, [opened]);
+function GoalsGraph() {
+  const {
+    goals, goalStats, projects, tasks,
+    fetchGoals, fetchGoalStats, fetchProjects, fetchTasks,
+    editGoal, editProject, removeGoal,
+  } = useTaskStore();
 
-  const availableProjects = projects.filter((p) => p.goal_id !== goal.id);
-  const availableTasks = tasks.filter((t) => t.goal_id !== goal.id && !t.completed);
-
-  const handleLink = async () => {
-    if (!selectedId) return;
-    if (mode === 'project') {
-      await editProject(selectedId, { goal_id: goal.id });
-      await fetchProjects();
-    } else {
-      await editTask(selectedId, { goal_id: goal.id });
-    }
-    await fetchGoalStats();
-    setSelectedId(null);
-    onClose();
-  };
-
-  return (
-    <Modal opened={opened} onClose={onClose} title={`Привязать к цели «${goal.title}»`} size="md">
-      <Stack>
-        <Select
-          label="Что привязать"
-          value={mode}
-          onChange={(v) => { setMode(v as 'project' | 'task'); setSelectedId(null); }}
-          data={[
-            { value: 'project', label: 'Проект' },
-            { value: 'task', label: 'Задачу' },
-          ]}
-        />
-        {mode === 'project' ? (
-          <Select
-            label="Выберите проект"
-            placeholder="Поиск проекта..."
-            value={selectedId}
-            onChange={setSelectedId}
-            data={availableProjects.map((p) => ({ value: p.id, label: p.title }))}
-            searchable
-            nothingFoundMessage="Нет доступных проектов"
-          />
-        ) : (
-          <Select
-            label="Выберите задачу"
-            placeholder="Поиск задачи..."
-            value={selectedId}
-            onChange={setSelectedId}
-            data={availableTasks.map((t) => ({ value: t.id, label: t.title }))}
-            searchable
-            nothingFoundMessage="Нет доступных задач"
-          />
-        )}
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>Отмена</Button>
-          <Button onClick={handleLink} disabled={!selectedId}>Привязать</Button>
-        </Group>
-      </Stack>
-    </Modal>
-  );
-}
-
-function GoalCard({
-  goal,
-  stats,
-  childGoals,
-  allStats,
-  onEdit,
-  onDelete,
-  onLink,
-  onAddChild,
-  linkedProjects,
-  linkedTasks,
-}: {
-  goal: Goal;
-  stats: GoalStats;
-  childGoals: Goal[];
-  allStats: Record<string, GoalStats>;
-  onEdit: (g: Goal) => void;
-  onDelete: (g: Goal) => void;
-  onLink: (g: Goal) => void;
-  onAddChild: (parentId: string) => void;
-  linkedProjects: Project[];
-  linkedTasks: Task[];
-}) {
-  const [expanded, setExpanded] = useState(true);
-  const progress = stats.total_tasks > 0
-    ? Math.round((stats.completed_tasks / stats.total_tasks) * 100)
-    : 0;
-
-  return (
-    <Paper p="md" radius="md" withBorder style={{ borderLeft: `4px solid ${goal.color}` }}>
-      <Group justify="space-between" mb="xs">
-        <Group gap="sm">
-          <ThemeIcon variant="light" color={goal.color} size="lg" radius="xl">
-            <IconTarget size={20} />
-          </ThemeIcon>
-          <div>
-            <Group gap="xs">
-              <Text fw={600} size="md">{goal.title}</Text>
-              <Badge size="xs" variant="light" color={goal.goal_type === 'yearly' ? 'orange' : 'blue'}>
-                {goal.goal_type === 'yearly' ? 'Год' : 'Квартал'}
-              </Badge>
-            </Group>
-          </div>
-        </Group>
-        <Group gap={4}>
-          <Menu shadow="md" width={180} position="bottom-end">
-            <Menu.Target>
-              <ActionIcon variant="subtle" size="sm">
-                <IconDots size={16} />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item leftSection={<IconLink size={14} />} onClick={() => onLink(goal)}>
-                Привязать
-              </Menu.Item>
-              <Menu.Item leftSection={<IconPlus size={14} />} onClick={() => onAddChild(goal.id)}>
-                Подцель
-              </Menu.Item>
-              <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => onEdit(goal)}>
-                Редактировать
-              </Menu.Item>
-              <Menu.Divider />
-              <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => onDelete(goal)}>
-                Удалить
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
-      </Group>
-
-      {/* Progress section */}
-      <Box mb="xs">
-        <Group justify="space-between" mb={4}>
-          <Group gap="xs">
-            <Text size="xs" c="dimmed">Задачи: {stats.completed_tasks}/{stats.total_tasks}</Text>
-          </Group>
-          <Text size="xs" fw={600} c={progress === 100 ? 'green' : undefined}>
-            {progress}%
-          </Text>
-        </Group>
-        <Progress
-          value={progress}
-          color={progress === 100 ? 'green' : goal.color}
-          size="sm"
-          radius="xl"
-        />
-      </Box>
-
-      {/* Linked projects */}
-      {linkedProjects.length > 0 && (
-        <Box mb="xs">
-          <Text size="xs" c="dimmed" fw={600} mb={4}>Проекты</Text>
-          <Group gap={6}>
-            {linkedProjects.map((p) => (
-              <Badge
-                key={p.id}
-                variant="light"
-                leftSection={<ColorSwatch color={p.color} size={10} />}
-                size="sm"
-              >
-                {p.title}
-              </Badge>
-            ))}
-          </Group>
-        </Box>
-      )}
-
-      {/* Linked tasks (show up to 5) */}
-      {linkedTasks.length > 0 && (
-        <Box mb="xs">
-          <Text size="xs" c="dimmed" fw={600} mb={4}>
-            Задачи ({linkedTasks.filter(t => !t.completed).length} активных)
-          </Text>
-          {linkedTasks.filter(t => !t.completed).slice(0, 5).map((t) => (
-            <Group key={t.id} gap={6} mb={2}>
-              <Box
-                w={10} h={10}
-                style={{
-                  borderRadius: '50%',
-                  border: '2px solid var(--mantine-color-dimmed)',
-                  flexShrink: 0,
-                }}
-              />
-              <Text size="xs" lineClamp={1}>{t.title}</Text>
-            </Group>
-          ))}
-          {linkedTasks.filter(t => !t.completed).length > 5 && (
-            <Text size="xs" c="dimmed" mt={2}>
-              ... ещё {linkedTasks.filter(t => !t.completed).length - 5}
-            </Text>
-          )}
-        </Box>
-      )}
-
-      {/* Child goals */}
-      {childGoals.length > 0 && (
-        <Box mt="sm">
-          <UnstyledButton onClick={() => setExpanded(!expanded)} mb={4}>
-            <Group gap={4}>
-              {expanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
-              <Text size="xs" fw={700} c="dimmed">
-                Подцели ({childGoals.length})
-              </Text>
-            </Group>
-          </UnstyledButton>
-          <Collapse in={expanded}>
-            <Stack gap="xs" pl="md" style={{ borderLeft: `2px solid var(--mantine-color-default-border)` }}>
-              {childGoals.map((child) => {
-                const childStats = allStats[child.id] || { total_tasks: 0, completed_tasks: 0, projects: 0 };
-                const childProgress = childStats.total_tasks > 0
-                  ? Math.round((childStats.completed_tasks / childStats.total_tasks) * 100)
-                  : 0;
-                return (
-                  <Paper key={child.id} p="xs" radius="sm" withBorder>
-                    <Group justify="space-between">
-                      <Group gap="xs">
-                        <ColorSwatch color={child.color} size={12} />
-                        <Text size="sm" fw={500}>{child.title}</Text>
-                        <Badge size="xs" variant="light">
-                          {childStats.completed_tasks}/{childStats.total_tasks}
-                        </Badge>
-                      </Group>
-                      <Group gap={4}>
-                        <Text size="xs" c="dimmed">{childProgress}%</Text>
-                        <Menu shadow="md" width={160}>
-                          <Menu.Target>
-                            <ActionIcon variant="subtle" size="xs">
-                              <IconDots size={14} />
-                            </ActionIcon>
-                          </Menu.Target>
-                          <Menu.Dropdown>
-                            <Menu.Item leftSection={<IconLink size={14} />} onClick={() => onLink(child)}>
-                              Привязать
-                            </Menu.Item>
-                            <Menu.Item leftSection={<IconEdit size={14} />} onClick={() => onEdit(child)}>
-                              Редактировать
-                            </Menu.Item>
-                            <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => onDelete(child)}>
-                              Удалить
-                            </Menu.Item>
-                          </Menu.Dropdown>
-                        </Menu>
-                      </Group>
-                    </Group>
-                    <Progress value={childProgress} color={child.color} size="xs" radius="xl" mt={6} />
-                  </Paper>
-                );
-              })}
-            </Stack>
-          </Collapse>
-        </Box>
-      )}
-    </Paper>
-  );
-}
-
-export function GoalsPage() {
-  const { goals, goalStats, projects, tasks, fetchGoals, fetchGoalStats, fetchProjects, fetchTasks, removeGoal } = useTaskStore();
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [createParentId, setCreateParentId] = useState<string | undefined>();
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const [linkingGoal, setLinkingGoal] = useState<Goal | null>(null);
+  const reactFlowInstance = useReactFlow();
+  const initialLoadRef = useRef(true);
 
+  // Fetch all data on mount
   useEffect(() => {
     fetchGoals();
     fetchGoalStats();
     fetchProjects();
-    fetchTasks({ completed: false });
+    fetchTasks({});
   }, []);
 
-  const handleDelete = async (goal: Goal) => {
-    if (confirm(`Удалить цель «${goal.title}»? Привязанные задачи и проекты останутся.`)) {
-      await removeGoal(goal.id);
+  // Handlers
+  const handleEdit = useCallback((id: string) => {
+    const goal = useTaskStore.getState().goals.find((g) => g.id === id);
+    if (goal) setEditingGoal(goal);
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const goal = useTaskStore.getState().goals.find((g) => g.id === id);
+    if (goal && confirm(`Удалить цель «${goal.title}»?`)) {
+      await removeGoal(id);
       await fetchGoalStats();
     }
-  };
+  }, [removeGoal, fetchGoalStats]);
 
-  const handleAddChild = (parentId: string) => {
+  const handleAddChild = useCallback((parentId: string) => {
     setCreateParentId(parentId);
     setCreateOpen(true);
-  };
+  }, []);
 
-  const topLevelGoals = goals.filter((g) => !g.parent_goal_id);
-  const yearlyGoals = topLevelGoals.filter((g) => g.goal_type === 'yearly');
-  const quarterlyGoals = topLevelGoals.filter((g) => g.goal_type === 'quarterly');
+  const handleUnlinkGoal = useCallback(async (id: string) => {
+    await editGoal(id, { parent_goal_id: null });
+    await Promise.all([fetchGoals(), fetchGoalStats()]);
+  }, [editGoal, fetchGoals, fetchGoalStats]);
 
-  // Overall stats
-  const totalTasks = Object.values(goalStats).reduce((sum, s) => sum + s.total_tasks, 0);
-  const completedTasks = Object.values(goalStats).reduce((sum, s) => sum + s.completed_tasks, 0);
-  const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const handleUnlinkProject = useCallback(async (id: string) => {
+    await editProject(id, { goal_id: null });
+    await Promise.all([fetchProjects(), fetchGoalStats()]);
+  }, [editProject, fetchProjects, fetchGoalStats]);
 
-  const renderGoalGroup = (title: string, goalsToRender: Goal[]) => {
-    if (goalsToRender.length === 0) return null;
-    return (
-      <Box>
-        <Text size="xs" fw={700} c="dimmed" mb="sm">{title}</Text>
-        <Stack gap="md">
-          {goalsToRender.map((goal) => {
-            const stats = goalStats[goal.id] || { total_tasks: 0, completed_tasks: 0, projects: 0 };
-            const childGoals = goals.filter((g) => g.parent_goal_id === goal.id);
-            const goalLinkedProjects = projects.filter((p) => p.goal_id === goal.id);
-            const goalLinkedTasks = tasks.filter((t) => t.goal_id === goal.id);
-            return (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                stats={stats}
-                childGoals={childGoals}
-                allStats={goalStats}
-                onEdit={setEditingGoal}
-                onDelete={handleDelete}
-                onLink={setLinkingGoal}
-                onAddChild={handleAddChild}
-                linkedProjects={goalLinkedProjects}
-                linkedTasks={goalLinkedTasks}
-              />
-            );
-          })}
-        </Stack>
-      </Box>
-    );
-  };
+  const handleEdgeDelete = useCallback(async (edgeId: string) => {
+    const edge = edges.find((e) => e.id === edgeId);
+    if (!edge) return;
+
+    if (edge.id.startsWith('goal-')) {
+      // Goal → Goal edge: unlink child
+      await editGoal(edge.target, { parent_goal_id: null });
+    } else if (edge.id.startsWith('proj-')) {
+      // Goal → Project edge: unlink project
+      const projectId = edge.target.replace('project-', '');
+      await editProject(projectId, { goal_id: null });
+    }
+    await Promise.all([fetchGoals(), fetchProjects(), fetchGoalStats()]);
+  }, [edges, editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
+
+  // Build nodes and edges from data
+  const buildGraph = useCallback(() => {
+    const { goals: g, goalStats: gs, projects: p, tasks: t } = useTaskStore.getState();
+    const activeProjects = p.filter((pr) => !pr.deleted_at);
+
+    // Build edges first to determine orphan status
+    const newEdges: Edge[] = [];
+
+    // Goal → Goal edges (parent → child)
+    g.forEach((goal) => {
+      if (goal.parent_goal_id) {
+        newEdges.push({
+          id: `goal-${goal.parent_goal_id}-${goal.id}`,
+          source: goal.parent_goal_id,
+          target: goal.id,
+          type: 'deletable',
+          data: { onDelete: handleEdgeDelete },
+          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+        });
+      }
+    });
+
+    // Goal → Project edges
+    activeProjects.forEach((proj) => {
+      if (proj.goal_id) {
+        newEdges.push({
+          id: `proj-${proj.goal_id}-${proj.id}`,
+          source: proj.goal_id,
+          target: `project-${proj.id}`,
+          type: 'deletable',
+          data: { onDelete: handleEdgeDelete },
+          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+        });
+      }
+    });
+
+    const connectedIds = new Set<string>();
+    newEdges.forEach((e) => {
+      connectedIds.add(e.source);
+      connectedIds.add(e.target);
+    });
+
+    // Goal nodes
+    const goalNodes: Node[] = g.map((goal) => {
+      const aggStats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
+      const isOrphan = !connectedIds.has(goal.id);
+
+      return {
+        id: goal.id,
+        type: 'goalNode',
+        position: { x: 0, y: 0 },
+        data: {
+          label: goal.title,
+          color: goal.color,
+          goalType: goal.goal_type,
+          total: aggStats.total,
+          completed: aggStats.completed,
+          isOrphan,
+          goalId: goal.id,
+          onEdit: handleEdit,
+          onDelete: handleDelete,
+          onAddChild: handleAddChild,
+          onUnlink: handleUnlinkGoal,
+          hasParent: !!goal.parent_goal_id,
+        } satisfies GoalNodeData,
+      };
+    });
+
+    // Project nodes
+    const projectNodes: Node[] = activeProjects.map((proj) => {
+      const projTasks = t.filter((task) => task.project_id === proj.id);
+      const total = projTasks.length;
+      const completed = projTasks.filter((task) => task.completed).length;
+      const nodeId = `project-${proj.id}`;
+      const isOrphan = !connectedIds.has(nodeId);
+
+      return {
+        id: nodeId,
+        type: 'projectNode',
+        position: { x: 0, y: 0 },
+        data: {
+          label: proj.title,
+          color: proj.color,
+          total,
+          completed,
+          isOrphan,
+          projectId: proj.id,
+          onUnlink: handleUnlinkProject,
+          hasGoal: !!proj.goal_id,
+        } satisfies ProjectNodeData,
+      };
+    });
+
+    const allNodes = [...goalNodes, ...projectNodes];
+    const layouted = getLayoutedElements(allNodes, newEdges);
+
+    setNodes(layouted.nodes);
+    setEdges(layouted.edges);
+
+    // Fit view on initial load
+    if (initialLoadRef.current && layouted.nodes.length > 0) {
+      initialLoadRef.current = false;
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2 });
+      }, 50);
+    }
+  }, [handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete, setNodes, setEdges, reactFlowInstance]);
+
+  // Rebuild graph when data changes
+  useEffect(() => {
+    buildGraph();
+  }, [goals, goalStats, projects, tasks, buildGraph]);
+
+  // Handle new connections (drag-to-connect)
+  const onConnect = useCallback(async (connection: Connection) => {
+    if (!connection.source || !connection.target) return;
+
+    const targetIsProject = connection.target.startsWith('project-');
+    const targetIsGoal = !targetIsProject;
+
+    if (targetIsGoal) {
+      // Source goal → Target goal: set parent_goal_id on target
+      await editGoal(connection.target, { parent_goal_id: connection.source });
+    } else {
+      // Source goal → Target project: set goal_id on project
+      const projectId = connection.target.replace('project-', '');
+      await editProject(projectId, { goal_id: connection.source });
+    }
+
+    await Promise.all([fetchGoals(), fetchProjects(), fetchGoalStats()]);
+  }, [editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
+
+  const handleAutoLayout = useCallback(() => {
+    buildGraph();
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.2 });
+    }, 50);
+  }, [buildGraph, reactFlowInstance]);
+
+  const hasData = goals.length > 0 || projects.filter((p) => !p.deleted_at).length > 0;
 
   return (
-    <Stack>
+    <Stack style={{ height: 'calc(100vh - 120px)' }} gap="xs">
+      {/* Header */}
       <Group justify="space-between">
         <div>
-          <Title order={3}>Мои цели</Title>
-          <Text size="sm" c="dimmed">Отслеживайте прогресс и двигайтесь к результату</Text>
+          <Title order={3}>Дерево целей</Title>
+          <Text size="sm" c="dimmed">Связывайте цели и проекты перетаскиванием</Text>
         </div>
-        <Button
-          leftSection={<IconPlus size={16} />}
-          onClick={() => { setCreateParentId(undefined); setCreateOpen(true); }}
-        >
-          Новая цель
-        </Button>
-      </Group>
-
-      {/* Overall summary */}
-      {goals.length > 0 && (
-        <Paper p="sm" radius="md" withBorder>
-          <Group gap="md">
-            <RingProgress
-              size={56}
-              thickness={6}
-              roundCaps
-              sections={[{ value: overallProgress, color: 'indigo' }]}
-              label={
-                <Text ta="center" size="xs" fw={700}>{overallProgress}%</Text>
-              }
-            />
-            <div>
-              <Text size="sm" fw={600}>Общий прогресс</Text>
-              <Text size="xs" c="dimmed">
-                {completedTasks} из {totalTasks} задач выполнено
-              </Text>
-            </div>
-          </Group>
-        </Paper>
-      )}
-
-      {/* Goal groups */}
-      {renderGoalGroup('Годовые цели', yearlyGoals)}
-      {renderGoalGroup('Квартальные цели', quarterlyGoals)}
-
-      {/* Empty state */}
-      {goals.length === 0 && (
-        <Paper p="xl" radius="md" withBorder ta="center">
-          <ThemeIcon size={60} radius="xl" variant="light" color="indigo" mx="auto" mb="md">
-            <IconTrophy size={32} />
-          </ThemeIcon>
-          <Title order={4} mb="xs">Поставьте свою первую цель</Title>
-          <Text size="sm" c="dimmed" maw={400} mx="auto" mb="md">
-            Цели помогают видеть общую картину. Привязывайте к ним проекты и задачи, чтобы понимать для чего вы работаете и видеть прогресс.
-          </Text>
+        <Group gap="xs">
+          <Button
+            variant="light"
+            leftSection={<IconLayoutDistributeVertical size={16} />}
+            onClick={handleAutoLayout}
+            size="sm"
+          >
+            Раскладка
+          </Button>
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => { setCreateParentId(undefined); setCreateOpen(true); }}
+            size="sm"
           >
-            Создать цель
+            Новая цель
           </Button>
+        </Group>
+      </Group>
+
+      {/* Graph or Empty state */}
+      {!hasData ? (
+        <Paper p="xl" radius="md" withBorder ta="center" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div>
+            <ThemeIcon size={60} radius="xl" variant="light" color="indigo" mx="auto" mb="md">
+              <IconTarget size={32} />
+            </ThemeIcon>
+            <Title order={4} mb="xs">Поставьте свою первую цель</Title>
+            <Text size="sm" c="dimmed" maw={400} mx="auto" mb="md">
+              Цели помогают видеть общую картину. Создавайте цели и связывайте их
+              с проектами, перетаскивая соединения между нодами.
+            </Text>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => { setCreateParentId(undefined); setCreateOpen(true); }}
+            >
+              Создать цель
+            </Button>
+          </div>
         </Paper>
+      ) : (
+        <div style={{ flex: 1, borderRadius: 'var(--mantine-radius-md)', overflow: 'hidden', border: '1px solid var(--mantine-color-default-border)' }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.2 }}
+            minZoom={0.3}
+            maxZoom={2}
+            defaultEdgeOptions={{
+              type: 'deletable',
+              markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+            }}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background gap={20} size={1} />
+            <Controls />
+            <MiniMap
+              nodeColor={(node) => {
+                const data = node.data as GoalNodeData | ProjectNodeData;
+                return data?.color || '#888';
+              }}
+              maskColor="rgba(0,0,0,0.1)"
+              style={{ borderRadius: 8 }}
+            />
+          </ReactFlow>
+        </div>
       )}
 
       {/* Create modal */}
@@ -563,15 +861,16 @@ export function GoalsPage() {
           <GoalEditForm goal={editingGoal} onClose={() => setEditingGoal(null)} />
         )}
       </Modal>
-
-      {/* Link modal */}
-      {linkingGoal && (
-        <LinkModal
-          opened={!!linkingGoal}
-          onClose={() => setLinkingGoal(null)}
-          goal={linkingGoal}
-        />
-      )}
     </Stack>
+  );
+}
+
+// ─── Page wrapper with ReactFlowProvider ─────────────────────────────────────
+
+export function GoalsPage() {
+  return (
+    <ReactFlowProvider>
+      <GoalsGraph />
+    </ReactFlowProvider>
   );
 }
