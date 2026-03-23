@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Modal,
   Stack,
@@ -13,6 +13,9 @@ import {
   List,
   ThemeIcon,
   Tooltip,
+  Collapse,
+  Badge,
+  UnstyledButton,
 } from '@mantine/core';
 import { AIProgressBar } from '@/components/ai/AIProgressBar';
 import {
@@ -29,6 +32,9 @@ import {
   IconCircleCheck,
   IconCircleX,
   IconQuestionMark,
+  IconChevronDown,
+  IconChevronRight,
+  IconInfoCircle,
 } from '@tabler/icons-react';
 import { useSurveyStore } from '@/stores/surveyStore';
 
@@ -324,6 +330,104 @@ function GoalOutcomesChecklist() {
 }
 
 /**
+ * Collapsible hints panel shown on each step with relevant context from previous answers.
+ * - Успехи (step 2): completed goals from step 1
+ * - Трудности (step 3): failed goals from step 1
+ * - Изменения (step 4): failed goals + all difficulties
+ * - Цели (step 5): unfinished goals + all improvements
+ */
+function StepHints({ currentStep }: { currentStep: number }) {
+  const { goalOutcomes, difficulties, improvements } = useSurveyStore();
+  const [opened, setOpened] = useState(true);
+
+  const completedGoals = goalOutcomes.filter((o) => o.completed === true).map((o) => o.goal);
+  const failedGoals = goalOutcomes.filter((o) => o.completed === false).map((o) => o.goal);
+
+  // Build hints for the current step
+  const hints: { label: string; items: string[]; color: string }[] = [];
+
+  if (currentStep === 2) {
+    // Успехи: only completed goals
+    if (completedGoals.length > 0) {
+      hints.push({ label: 'Выполненные цели', items: completedGoals, color: 'green' });
+    }
+  } else if (currentStep === 3) {
+    // Трудности: only failed goals
+    if (failedGoals.length > 0) {
+      hints.push({ label: 'Невыполненные цели', items: failedGoals, color: 'red' });
+    }
+  } else if (currentStep === 4) {
+    // Изменения: failed goals + all difficulties
+    if (failedGoals.length > 0) {
+      hints.push({ label: 'Невыполненные цели', items: failedGoals, color: 'red' });
+    }
+    if (difficulties.length > 0) {
+      hints.push({ label: 'Трудности', items: difficulties, color: 'orange' });
+    }
+  } else if (currentStep === 5) {
+    // Цели: unfinished goals + all improvements
+    if (failedGoals.length > 0) {
+      hints.push({ label: 'Невыполненные цели', items: failedGoals, color: 'red' });
+    }
+    if (improvements.length > 0) {
+      hints.push({ label: 'Изменения', items: improvements, color: 'blue' });
+    }
+  }
+
+  if (hints.length === 0) return null;
+
+  const totalItems = hints.reduce((sum, h) => sum + h.items.length, 0);
+
+  return (
+    <Paper
+      p="xs"
+      radius="md"
+      mt="xs"
+      style={{
+        background: 'var(--mantine-color-indigo-light)',
+        border: '1px solid var(--mantine-color-indigo-light-hover)',
+      }}
+    >
+      <UnstyledButton
+        onClick={() => setOpened((v) => !v)}
+        style={{ width: '100%' }}
+      >
+        <Group gap="xs" justify="space-between">
+          <Group gap={6}>
+            {opened
+              ? <IconChevronDown size={14} color="var(--mantine-color-indigo-6)" />
+              : <IconChevronRight size={14} color="var(--mantine-color-indigo-6)" />
+            }
+            <IconInfoCircle size={14} color="var(--mantine-color-indigo-6)" />
+            <Text size="xs" fw={600} c="indigo">
+              Рекомендуемые подсказки
+            </Text>
+          </Group>
+          <Badge size="xs" variant="light" color="indigo">{totalItems}</Badge>
+        </Group>
+      </UnstyledButton>
+      <Collapse in={opened}>
+        <Stack gap={6} mt="xs">
+          {hints.map((hint) => (
+            <Box key={hint.label}>
+              <Text size="xs" fw={600} c={hint.color} mb={2}>
+                {hint.label}
+              </Text>
+              {hint.items.map((item, i) => (
+                <Group key={i} gap={4} wrap="nowrap" align="flex-start" pl={4}>
+                  <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>•</Text>
+                  <Text size="xs" c="dimmed" lineClamp={2}>{item}</Text>
+                </Group>
+              ))}
+            </Box>
+          ))}
+        </Stack>
+      </Collapse>
+    </Paper>
+  );
+}
+
+/**
  * Sidebar showing completed previous steps during the survey.
  */
 function PreviousStepsSidebar({ currentStep }: { currentStep: number }) {
@@ -579,6 +683,9 @@ export function WeeklySurveyWizard() {
                 )}
               </Stack>
             </Paper>
+
+            {/* Step-specific hints from previous answers */}
+            {!isGoalOutcomesStep && <StepHints currentStep={currentStep} />}
 
             {/* AI progress bar / regenerate button */}
             {stepConfig.hasAI && (
