@@ -55,7 +55,37 @@ async def chat(
         kwargs["api_base"] = settings.llm_api_base
 
     response = await litellm.acompletion(**kwargs)
-    return response.choices[0].message.content or ""
+    content = response.choices[0].message.content or ""
+
+    # Some Ollama models return empty content due to LiteLLM deserialization issues,
+    # but the raw response may still contain the actual text.
+    if not content:
+        import logging
+        logger = logging.getLogger("todopilot.llm")
+        # Try to extract content from raw response
+        raw = getattr(response, "_hidden_params", {}).get("original_response", None)
+        if raw:
+            try:
+                import json as _json
+                raw_data = _json.loads(raw) if isinstance(raw, str) else raw
+                if isinstance(raw_data, dict):
+                    # Ollama /api/chat format
+                    content = (
+                        raw_data.get("message", {}).get("content", "")
+                        or raw_data.get("response", "")
+                    )
+            except Exception:
+                pass
+        if not content:
+            logger.warning(
+                "[LLM] Empty content from model despite completion tokens. "
+                "This may be a LiteLLM/Ollama deserialization issue. "
+                "Response type: %s, keys: %s",
+                type(response).__name__,
+                getattr(response, "__dict__", {}).keys(),
+            )
+
+    return content
 
 
 async def analyze_productivity(
