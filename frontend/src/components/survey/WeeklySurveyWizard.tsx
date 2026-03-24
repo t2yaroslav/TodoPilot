@@ -395,7 +395,8 @@ function PreviousStepsSidebar({ currentStep }: { currentStep: number }) {
 
   // Filter to recommended only when not showing all
   const visibleSteps = showAll ? allSteps : allSteps.filter((s) => recommendedSteps.has(s.step));
-  const hasHidden = allSteps.length > visibleSteps.length;
+  const recommendedCount = allSteps.filter((s) => recommendedSteps.has(s.step)).length;
+  const canToggle = recommendedCount > 0 && recommendedCount < allSteps.length;
 
   if (allSteps.length === 0) return null;
 
@@ -424,7 +425,7 @@ function PreviousStepsSidebar({ currentStep }: { currentStep: number }) {
             </Stack>
           </Box>
         ))}
-        {hasHidden && (
+        {canToggle && (
           <UnstyledButton onClick={() => setShowAll((v) => !v)}>
             <Group gap={4}>
               {showAll
