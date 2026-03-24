@@ -39,7 +39,7 @@ import {
   Menu,
   ThemeIcon,
   Box,
-  SegmentedControl,
+  Switch,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -614,7 +614,7 @@ function GoalsGraph() {
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const [viewFilter, setViewFilter] = useState<string>('all');
+  const [hideCompleted, setHideCompleted] = useState(false);
 
   // Wrap onNodesChange to debounce-save positions to localStorage
   const onNodesChange = useCallback((changes: Parameters<typeof onNodesChangeBase>[0]) => {
@@ -702,13 +702,13 @@ function GoalsGraph() {
       projectCompletionMap.set(proj.id, total > 0 && completed === total);
     });
 
-    // Filter based on viewFilter
-    const filteredGoals = viewFilter === 'active'
+    // Filter based on hideCompleted
+    const filteredGoals = hideCompleted
       ? g.filter((goal) => !goalCompletionMap.get(goal.id))
       : g;
     const filteredGoalIds = new Set(filteredGoals.map((g) => g.id));
 
-    const filteredProjects = viewFilter === 'active'
+    const filteredProjects = hideCompleted
       ? activeProjects.filter((proj) => !projectCompletionMap.get(proj.id))
       : activeProjects;
     const filteredProjectIds = new Set(filteredProjects.map((p) => p.id));
@@ -815,7 +815,7 @@ function GoalsGraph() {
     });
 
     return { nodes: [...goalNodes, ...projectNodes], edges: newEdges };
-  }, [viewFilter, handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
+  }, [hideCompleted, handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
 
   // Full layout: positions all nodes via Dagre. Called on button click and initial load.
   const applyLayout = useCallback((useSaved = false) => {
@@ -875,11 +875,11 @@ function GoalsGraph() {
     }
   }, [goals, projects, applyLayout]);
 
-  // Sync node data when store data changes (without resetting positions)
+  // Sync node data when store data or filter changes (without resetting positions)
   useEffect(() => {
     if (initialLoadRef.current) return; // skip before initial layout
     syncData();
-  }, [goals, goalStats, projects, tasks, syncData]);
+  }, [goals, goalStats, projects, tasks, hideCompleted, syncData]);
 
   // Handle new connections (drag-to-connect)
   // With reversed edges: source = child (dragged from source handle at top),
@@ -912,19 +912,16 @@ function GoalsGraph() {
     <Stack style={{ height: 'calc(100vh - 80px)' }} gap="xs">
       {/* Header */}
       <Group justify="space-between">
-        <Group gap="md">
+        <Group gap="lg">
           <div>
             <Title order={3}>Дерево целей</Title>
             <Text size="sm" c="dimmed">Связывайте цели и проекты перетаскиванием</Text>
           </div>
-          <SegmentedControl
-            value={viewFilter}
-            onChange={setViewFilter}
-            size="xs"
-            data={[
-              { label: 'Все', value: 'all' },
-              { label: 'Активные', value: 'active' },
-            ]}
+          <Switch
+            label="Скрыть завершённые"
+            checked={hideCompleted}
+            onChange={(e) => setHideCompleted(e.currentTarget.checked)}
+            size="sm"
           />
         </Group>
         <Group gap="xs">
