@@ -409,20 +409,6 @@ function DeletableEdge({
     targetPosition,
   });
 
-  // Fixed-size arrowhead at target end
-  const arrowSize = 8;
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  const ux = dx / len;
-  const uy = dy / len;
-  const ax = targetX - ux * arrowSize * 1.5;
-  const ay = targetY - uy * arrowSize * 1.5;
-  const px = -uy * arrowSize;
-  const py = ux * arrowSize;
-  const arrowPath = `M${targetX},${targetY} L${ax + px},${ay + py} L${ax - px},${ay - py} Z`;
-  const arrowColor = hovered ? 'var(--mantine-color-red-5)' : 'var(--mantine-color-dimmed)';
-
   return (
     <>
       {/* Invisible wider path for hover detection */}
@@ -443,7 +429,6 @@ function DeletableEdge({
           opacity: hovered ? 1 : 0.7,
         }}
       />
-      <path d={arrowPath} fill={arrowColor} opacity={hovered ? 1 : 0.7} />
       {hovered && (
         <EdgeLabelRenderer>
           <div
