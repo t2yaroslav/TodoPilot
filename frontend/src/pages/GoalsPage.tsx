@@ -66,6 +66,20 @@ const GOAL_COLORS = [
 const NODE_WIDTH = 220;
 const GOAL_NODE_HEIGHT = 120;
 const PROJECT_NODE_HEIGHT = 80;
+const POSITIONS_STORAGE_KEY = 'goals-graph-positions';
+
+function savePositions(nodes: Node[]) {
+  const positions: Record<string, { x: number; y: number }> = {};
+  nodes.forEach((n) => { positions[n.id] = n.position; });
+  try { localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(positions)); } catch { /* ignore */ }
+}
+
+function loadPositions(): Record<string, { x: number; y: number }> | null {
+  try {
+    const raw = localStorage.getItem(POSITIONS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
 
 // ─── Aggregated stats helper ─────────────────────────────────────────────────
 
@@ -137,8 +151,9 @@ function getLayoutedElements(
     g.setNode(node.id, { width: NODE_WIDTH, height });
   });
 
+  // Edges are child→parent in React Flow, but dagre needs parent→child for TB layout
   edges.forEach((edge) => {
-    g.setEdge(edge.source, edge.target);
+    g.setEdge(edge.target, edge.source);
   });
 
   dagre.layout(g);
@@ -213,7 +228,8 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
         position: 'relative',
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
+      {/* Source at top: when this goal is a child, edge goes UP to parent */}
+      <Handle type="source" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
 
       {data.isOrphan && (
         <ThemeIcon
@@ -276,7 +292,8 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
       </Group>
       <Progress value={progress} color={progress === 100 ? 'green' : data.color} size="xs" radius="xl" />
 
-      <Handle type="source" position={Position.Bottom} style={{ background: data.color, width: 10, height: 10 }} />
+      {/* Target at bottom: when this goal is a parent, receives edges from children below */}
+      <Handle type="target" position={Position.Bottom} style={{ background: data.color, width: 10, height: 10 }} />
     </Paper>
   );
 }
@@ -309,7 +326,8 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
         position: 'relative',
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
+      {/* Source at top: edge goes UP to parent goal */}
+      <Handle type="source" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
 
       {data.isOrphan && (
         <ThemeIcon
@@ -343,7 +361,8 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
         {data.completed}/{data.total} задач
       </Text>
 
-      {/* Projects don't have source handle — they are leaf nodes */}
+      {/* Target at bottom: for drag-to-connect from goal above */}
+      <Handle type="target" position={Position.Bottom} style={{ background: data.color, width: 10, height: 10 }} />
     </Paper>
   );
 }
@@ -354,6 +373,7 @@ interface DeletableEdgeData {
   onDelete: (edgeId: string, source: string, target: string) => void;
   edgeSource: string;
   edgeTarget: string;
+  taskCount: number;
   [key: string]: unknown;
 }
 
@@ -379,6 +399,9 @@ function DeletableEdge({
   markerEnd?: string;
 }) {
   const [hovered, setHovered] = useState(false);
+  const taskCount = data?.taskCount || 0;
+  // Edge thickness: min 1.5, max 8, scales with sqrt of task count
+  const baseWidth = Math.min(1.5 + Math.sqrt(taskCount) * 0.8, 8);
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -405,8 +428,8 @@ function DeletableEdge({
         markerEnd={markerEnd}
         style={{
           stroke: hovered ? 'var(--mantine-color-red-5)' : 'var(--mantine-color-dimmed)',
-          strokeWidth: hovered ? 2 : 1.5,
-          opacity: hovered ? 1 : 0.6,
+          strokeWidth: hovered ? baseWidth + 1 : baseWidth,
+          opacity: hovered ? 1 : 0.7,
         }}
       />
       {hovered && (
@@ -558,8 +581,21 @@ function GoalsGraph() {
     editGoal, editProject, removeGoal,
   } = useTaskStore();
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Wrap onNodesChange to debounce-save positions to localStorage
+  const onNodesChange = useCallback((changes: Parameters<typeof onNodesChangeBase>[0]) => {
+    onNodesChangeBase(changes);
+    const hasPositionChange = changes.some((c: { type: string }) => c.type === 'position');
+    if (hasPositionChange) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        setNodes((prev) => { savePositions(prev); return prev; });
+      }, 300);
+    }
+  }, [onNodesChangeBase, setNodes]);
   const [createOpen, setCreateOpen] = useState(false);
   const [createParentId, setCreateParentId] = useState<string | undefined>();
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -623,29 +659,43 @@ function GoalsGraph() {
     // Build edges
     const newEdges: Edge[] = [];
 
-    // Goal → Goal edges (parent → child)
+    // Child goal → Parent goal edges (arrows point from child UP to parent)
     g.forEach((goal) => {
       if (goal.parent_goal_id) {
+        const childStats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
         newEdges.push({
           id: `goal-${goal.parent_goal_id}-${goal.id}`,
-          source: goal.parent_goal_id,
-          target: goal.id,
+          source: goal.id,              // child (below)
+          target: goal.parent_goal_id,  // parent (above)
           type: 'deletable',
-          data: { onDelete: handleEdgeDelete, edgeSource: goal.parent_goal_id, edgeTarget: goal.id },
+          data: {
+            onDelete: handleEdgeDelete,
+            edgeSource: goal.parent_goal_id,
+            edgeTarget: goal.id,
+            taskCount: childStats.total,
+          },
           markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
         });
       }
     });
 
-    // Goal → Project edges
+    // Project → Goal edges (arrows point from project UP to goal)
     activeProjects.forEach((proj) => {
       if (proj.goal_id) {
+        const projTasks = t.filter((task) => task.project_id === proj.id);
+        const projTotal = projTasks.length;
+        const projCompleted = projTasks.filter((task) => task.completed).length;
         newEdges.push({
           id: `proj-${proj.goal_id}-${proj.id}`,
-          source: proj.goal_id,
-          target: `project-${proj.id}`,
+          source: `project-${proj.id}`,  // project (below)
+          target: proj.goal_id,          // goal (above)
           type: 'deletable',
-          data: { onDelete: handleEdgeDelete, edgeSource: proj.goal_id, edgeTarget: `project-${proj.id}` },
+          data: {
+            onDelete: handleEdgeDelete,
+            edgeSource: proj.goal_id,
+            edgeTarget: `project-${proj.id}`,
+            taskCount: projTotal,
+          },
           markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
         });
       }
@@ -712,11 +762,23 @@ function GoalsGraph() {
   }, [handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
 
   // Full layout: positions all nodes via Dagre. Called on button click and initial load.
-  const applyLayout = useCallback(() => {
+  const applyLayout = useCallback((useSaved = false) => {
     const { nodes: newNodes, edges: newEdges } = computeNodesAndEdges();
-    const layouted = getLayoutedElements(newNodes, newEdges);
-    setNodes(layouted.nodes);
-    setEdges(layouted.edges);
+    const saved = useSaved ? loadPositions() : null;
+
+    let finalNodes: Node[];
+    if (saved && newNodes.every((n) => saved[n.id])) {
+      // All positions found in localStorage — restore them
+      finalNodes = newNodes.map((n) => ({ ...n, position: saved[n.id] }));
+    } else {
+      // Run dagre layout
+      const layouted = getLayoutedElements(newNodes, newEdges);
+      finalNodes = layouted.nodes;
+    }
+
+    setNodes(finalNodes);
+    setEdges(newEdges);
+    savePositions(finalNodes);
     setTimeout(() => {
       reactFlowInstance.fitView({ padding: 0.2 });
     }, 50);
@@ -739,19 +801,21 @@ function GoalsGraph() {
         newNodePositions = new Map(layouted.nodes.map((n) => [n.id, n.position]));
       }
 
-      return newNodes.map((node) => ({
+      const result = newNodes.map((node) => ({
         ...node,
         position: existingPositions.get(node.id) || newNodePositions.get(node.id) || node.position,
       }));
+      savePositions(result);
+      return result;
     });
     setEdges(newEdges);
   }, [computeNodesAndEdges, setNodes, setEdges]);
 
-  // Initial layout on first data load
+  // Initial layout on first data load (try to restore saved positions)
   useEffect(() => {
     if (initialLoadRef.current && (goals.length > 0 || projects.some((p) => !p.deleted_at))) {
       initialLoadRef.current = false;
-      applyLayout();
+      applyLayout(true);
     }
   }, [goals, projects, applyLayout]);
 
@@ -762,24 +826,28 @@ function GoalsGraph() {
   }, [goals, goalStats, projects, tasks, syncData]);
 
   // Handle new connections (drag-to-connect)
+  // With reversed edges: source = child (dragged from source handle at top),
+  // target = parent (dropped on target handle at bottom)
   const onConnect = useCallback(async (connection: Connection) => {
     if (!connection.source || !connection.target) return;
 
-    const targetIsProject = connection.target.startsWith('project-');
-    const targetIsGoal = !targetIsProject;
+    const sourceIsProject = connection.source.startsWith('project-');
+    const sourceIsGoal = !sourceIsProject;
 
-    if (targetIsGoal) {
-      await editGoal(connection.target, { parent_goal_id: connection.source });
+    if (sourceIsGoal) {
+      // Child goal → Parent goal: set parent_goal_id on the source (child)
+      await editGoal(connection.source, { parent_goal_id: connection.target });
     } else {
-      const projectId = connection.target.replace('project-', '');
-      await editProject(projectId, { goal_id: connection.source });
+      // Project → Goal: set goal_id on the project
+      const projectId = connection.source.replace('project-', '');
+      await editProject(projectId, { goal_id: connection.target });
     }
 
     await Promise.all([fetchGoals(), fetchProjects(), fetchGoalStats()]);
   }, [editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
 
   const handleAutoLayout = useCallback(() => {
-    applyLayout();
+    applyLayout(false); // force dagre, ignore saved positions
   }, [applyLayout]);
 
   const hasData = goals.length > 0 || projects.filter((p) => !p.deleted_at).length > 0;
@@ -847,7 +915,7 @@ function GoalsGraph() {
             maxZoom={2}
             defaultEdgeOptions={{
               type: 'deletable',
-              markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+              markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
             }}
             proOptions={{ hideAttribution: true }}
           >
