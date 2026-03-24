@@ -224,8 +224,14 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
       p="xs"
       radius="md"
       withBorder
-      style={{
-        borderLeft: `4px solid ${done ? 'var(--mantine-color-gray-5)' : data.color}`,
+      style={done ? {
+        border: '1px dashed var(--mantine-color-gray-5)',
+        width: NODE_WIDTH,
+        minHeight: GOAL_NODE_HEIGHT,
+        background: 'var(--mantine-color-body)',
+        position: 'relative',
+      } : {
+        borderLeft: `4px solid ${data.color}`,
         width: NODE_WIDTH,
         minHeight: GOAL_NODE_HEIGHT,
         background: 'var(--mantine-color-body)',
@@ -270,7 +276,7 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
         </Group>
         <Menu shadow="md" width={160} position="bottom-end" withinPortal>
           <Menu.Target>
-            <ActionIcon variant="subtle" size="xs" className="nodrag">
+            <ActionIcon variant="subtle" size="xs" color={done ? 'gray' : undefined} className="nodrag">
               <IconDots size={14} />
             </ActionIcon>
           </Menu.Target>
@@ -309,7 +315,7 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
       <Progress value={progress} color={done ? 'gray' : data.color} size="xs" radius="xl" />
 
       {/* Target at bottom: when this goal is a parent, receives edges from children below */}
-      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} id="target" />
     </Paper>
   );
 }
@@ -337,8 +343,14 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
       p="xs"
       radius="md"
       withBorder
-      style={{
-        borderLeft: `4px solid ${done ? 'var(--mantine-color-gray-5)' : data.color}`,
+      style={done ? {
+        border: '1px dashed var(--mantine-color-gray-5)',
+        width: NODE_WIDTH,
+        minHeight: PROJECT_NODE_HEIGHT,
+        background: 'var(--mantine-color-body)',
+        position: 'relative',
+      } : {
+        borderLeft: `4px solid ${data.color}`,
         width: NODE_WIDTH,
         minHeight: PROJECT_NODE_HEIGHT,
         background: 'var(--mantine-color-body)',
@@ -382,7 +394,7 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
           </Text>
         </Group>
         {data.hasGoal && (
-          <ActionIcon variant="subtle" size="xs" className="nodrag" onClick={() => data.onUnlink(data.projectId)}>
+          <ActionIcon variant="subtle" size="xs" color={done ? 'gray' : undefined} className="nodrag" onClick={() => data.onUnlink(data.projectId)}>
             <IconLinkOff size={14} />
           </ActionIcon>
         )}
@@ -899,15 +911,23 @@ function GoalsGraph() {
     if (!connection.source || !connection.target) return;
 
     const sourceIsProject = connection.source.startsWith('project-');
-    const sourceIsGoal = !sourceIsProject;
+    const targetIsProject = connection.target.startsWith('project-');
 
-    if (sourceIsGoal) {
-      // Child goal → Parent goal: set parent_goal_id on the source (child)
+    if (sourceIsProject && targetIsProject) {
+      // Project → Project: not supported
+      return;
+    }
+
+    if (!sourceIsProject && !targetIsProject) {
+      // Goal → Goal: set parent_goal_id on the source (child)
       await editGoal(connection.source, { parent_goal_id: connection.target });
     } else {
-      // Project → Goal: set goal_id on the project
-      const projectId = connection.source.replace('project-', '');
-      await editProject(projectId, { goal_id: connection.target });
+      // Project → Goal (either direction): set goal_id on the project
+      const projectId = sourceIsProject
+        ? connection.source.replace('project-', '')
+        : connection.target.replace('project-', '');
+      const goalId = sourceIsProject ? connection.target : connection.source;
+      await editProject(projectId, { goal_id: goalId });
     }
 
     await Promise.all([fetchGoals(), fetchProjects(), fetchAllProjects(), fetchGoalStats()]);
