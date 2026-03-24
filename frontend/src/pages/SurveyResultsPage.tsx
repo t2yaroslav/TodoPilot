@@ -5,7 +5,6 @@ import {
   Text,
   Paper,
   Group,
-  Badge,
   Accordion,
   List,
   ThemeIcon,
@@ -21,8 +20,8 @@ import {
   IconTarget,
   IconCalendar,
   IconClipboardCheck,
-  IconCircleCheck,
-  IconCircleX,
+  IconCheck,
+  IconX,
 } from '@tabler/icons-react';
 import { useSurveyStore, SurveyResult, GoalOutcome } from '@/stores/surveyStore';
 
@@ -42,30 +41,21 @@ function GoalOutcomeItem({
   outcome: GoalOutcome;
   onToggle: (completed: boolean) => void;
 }) {
+  const isCompleted = outcome.completed === true;
+  const isNotCompleted = outcome.completed === false;
+
   return (
     <Group gap="xs" wrap="nowrap" py={2}>
-      <Group gap={4} wrap="nowrap">
-        <Tooltip label="Выполнено">
-          <ActionIcon
-            variant={outcome.completed === true ? 'filled' : 'subtle'}
-            color="green"
-            size="sm"
-            onClick={() => onToggle(true)}
-          >
-            <IconCircleCheck size={14} />
-          </ActionIcon>
-        </Tooltip>
-        <Tooltip label="Не выполнено">
-          <ActionIcon
-            variant={outcome.completed === false ? 'filled' : 'subtle'}
-            color="red"
-            size="sm"
-            onClick={() => onToggle(false)}
-          >
-            <IconCircleX size={14} />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
+      <Tooltip label={isCompleted ? 'Выполнено' : isNotCompleted ? 'Не выполнено' : 'Отметить'}>
+        <ActionIcon
+          variant="subtle"
+          color={isCompleted ? 'green' : isNotCompleted ? 'red' : 'gray'}
+          size="sm"
+          onClick={() => onToggle(!isCompleted)}
+        >
+          {isCompleted ? <IconCheck size={14} /> : <IconX size={14} />}
+        </ActionIcon>
+      </Tooltip>
       <Text size="sm">{outcome.goal}</Text>
     </Group>
   );
@@ -86,9 +76,6 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
         <Group gap="sm">
           <IconCalendar size={18} color="var(--mantine-color-indigo-6)" />
           <Text fw={500}>Неделя от {formatWeekDate(survey.week_start)}</Text>
-          <Badge size="sm" color="indigo" variant="light">
-            {(survey.achievements?.length || 0) + (survey.weekly_goals?.length || 0)} пунктов
-          </Badge>
         </Group>
       </Accordion.Control>
       <Accordion.Panel>
