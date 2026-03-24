@@ -225,21 +225,20 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
       radius="md"
       withBorder
       style={{
-        borderLeft: `4px solid ${done ? 'var(--mantine-color-green-6)' : data.color}`,
+        borderLeft: `4px solid ${done ? 'var(--mantine-color-gray-5)' : data.color}`,
         width: NODE_WIDTH,
         minHeight: GOAL_NODE_HEIGHT,
         background: 'var(--mantine-color-body)',
         position: 'relative',
-        opacity: done ? 0.55 : 1,
       }}
     >
       {/* Source at top: when this goal is a child, edge goes UP to parent */}
-      <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} />
 
       {done && (
         <ThemeIcon
-          variant="filled"
-          color="green"
+          variant="light"
+          color="gray"
           size="sm"
           radius="xl"
           style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
@@ -262,7 +261,7 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
 
       <Group justify="space-between" mb={4} wrap="nowrap">
         <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
-          <ThemeIcon variant="light" color={done ? 'green' : data.color} size="sm" radius="xl">
+          <ThemeIcon variant="light" color={done ? 'gray' : data.color} size="sm" radius="xl">
             <IconTarget size={14} />
           </ThemeIcon>
           <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.3, textDecoration: done ? 'line-through' : undefined }} c={done ? 'dimmed' : undefined}>
@@ -295,7 +294,7 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
         </Menu>
       </Group>
 
-      <Badge size="xs" variant="light" color={data.goalType === 'yearly' ? 'orange' : 'blue'} mb={4}>
+      <Badge size="xs" variant="light" color={done ? 'gray' : (data.goalType === 'yearly' ? 'orange' : 'blue')} mb={4}>
         {data.goalType === 'yearly' ? 'Год' : 'Квартал'}
       </Badge>
 
@@ -303,14 +302,14 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
         <Text size="xs" c="dimmed">
           {data.completed}/{data.total} задач
         </Text>
-        <Text size="xs" fw={600} c={done ? 'green' : undefined}>
+        <Text size="xs" fw={600} c={done ? 'dimmed' : undefined}>
           {progress}%
         </Text>
       </Group>
-      <Progress value={progress} color={done ? 'green' : data.color} size="xs" radius="xl" />
+      <Progress value={progress} color={done ? 'gray' : data.color} size="xs" radius="xl" />
 
       {/* Target at bottom: when this goal is a parent, receives edges from children below */}
-      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} />
     </Paper>
   );
 }
@@ -339,21 +338,20 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
       radius="md"
       withBorder
       style={{
-        borderLeft: `4px solid ${done ? 'var(--mantine-color-green-6)' : data.color}`,
+        borderLeft: `4px solid ${done ? 'var(--mantine-color-gray-5)' : data.color}`,
         width: NODE_WIDTH,
         minHeight: PROJECT_NODE_HEIGHT,
         background: 'var(--mantine-color-body)',
         position: 'relative',
-        opacity: done ? 0.55 : 1,
       }}
     >
       {/* Source at top: edge goes UP to parent goal */}
-      <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} />
 
       {done && (
         <ThemeIcon
-          variant="filled"
-          color="green"
+          variant="light"
+          color="gray"
           size="sm"
           radius="xl"
           style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
@@ -376,7 +374,7 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
 
       <Group justify="space-between" mb={4} wrap="nowrap">
         <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
-          <ThemeIcon variant="light" color={done ? 'green' : data.color} size="sm" radius="xl">
+          <ThemeIcon variant="light" color={done ? 'gray' : data.color} size="sm" radius="xl">
             <IconFolder size={14} />
           </ThemeIcon>
           <Text size="xs" fw={600} lineClamp={1} style={{ textDecoration: done ? 'line-through' : undefined }} c={done ? 'dimmed' : undefined}>
@@ -395,7 +393,7 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
       </Text>
 
       {/* Target at bottom: for drag-to-connect from goal above */}
-      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} />
     </Paper>
   );
 }
