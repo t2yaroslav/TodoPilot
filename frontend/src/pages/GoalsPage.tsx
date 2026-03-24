@@ -56,6 +56,7 @@ import {
   IconCheck,
 } from '@tabler/icons-react';
 import { useTaskStore, Goal, Project, Task } from '@/stores/taskStore';
+import { getProjects } from '@/api/client';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -615,6 +616,7 @@ function GoalsGraph() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const [hideCompleted, setHideCompleted] = useState(false);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   // Wrap onNodesChange to debounce-save positions to localStorage
   const onNodesChange = useCallback((changes: Parameters<typeof onNodesChangeBase>[0]) => {
@@ -633,11 +635,18 @@ function GoalsGraph() {
   const reactFlowInstance = useReactFlow();
   const initialLoadRef = useRef(true);
 
+  // Fetch all projects including deleted (for goals graph)
+  const fetchAllProjects = useCallback(async () => {
+    const { data } = await getProjects({ include_deleted: true });
+    setAllProjects(data);
+  }, []);
+
   // Fetch all data on mount
   useEffect(() => {
     fetchGoals();
     fetchGoalStats();
     fetchProjects();
+    fetchAllProjects();
     fetchTasks({});
   }, []);
 
@@ -667,39 +676,43 @@ function GoalsGraph() {
 
   const handleUnlinkProject = useCallback(async (id: string) => {
     await editProject(id, { goal_id: null });
-    await Promise.all([fetchProjects(), fetchGoalStats()]);
-  }, [editProject, fetchProjects, fetchGoalStats]);
+    await Promise.all([fetchProjects(), fetchAllProjects(), fetchGoalStats()]);
+  }, [editProject, fetchProjects, fetchAllProjects, fetchGoalStats]);
 
   const handleEdgeDelete = useCallback(async (edgeId: string, source: string, target: string) => {
     if (edgeId.startsWith('goal-')) {
-      // Goal → Goal edge: unlink child
       await editGoal(target, { parent_goal_id: null });
     } else if (edgeId.startsWith('proj-')) {
-      // Goal → Project edge: unlink project
       const projectId = target.replace('project-', '');
       await editProject(projectId, { goal_id: null });
     }
-    await Promise.all([fetchGoals(), fetchProjects(), fetchGoalStats()]);
-  }, [editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
+    await Promise.all([fetchGoals(), fetchProjects(), fetchAllProjects(), fetchGoalStats()]);
+  }, [editGoal, editProject, fetchGoals, fetchProjects, fetchAllProjects, fetchGoalStats]);
 
   // Helper: compute edges and nodes from current store data
   const computeNodesAndEdges = useCallback(() => {
-    const { goals: g, goalStats: gs, projects: p, tasks: t } = useTaskStore.getState();
-    const activeProjects = p.filter((pr) => !pr.deleted_at);
+    const { goals: g, goalStats: gs, tasks: t } = useTaskStore.getState();
+    // Use allProjects (includes deleted/completed) for the goals graph
+    const graphProjects = allProjects;
 
     // Precompute completion status for goals and projects
+    // A project is "completed" if it's soft-deleted OR all its tasks are done
     const goalCompletionMap = new Map<string, boolean>();
     g.forEach((goal) => {
-      const stats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
+      const stats = getAggregatedStats(goal.id, g, gs, graphProjects, t);
       goalCompletionMap.set(goal.id, stats.total > 0 && stats.completed === stats.total);
     });
 
     const projectCompletionMap = new Map<string, boolean>();
-    activeProjects.forEach((proj) => {
-      const projTasks = t.filter((task) => task.project_id === proj.id);
-      const total = projTasks.length;
-      const completed = projTasks.filter((task) => task.completed).length;
-      projectCompletionMap.set(proj.id, total > 0 && completed === total);
+    graphProjects.forEach((proj) => {
+      if (proj.deleted_at) {
+        projectCompletionMap.set(proj.id, true);
+      } else {
+        const projTasks = t.filter((task) => task.project_id === proj.id);
+        const total = projTasks.length;
+        const completed = projTasks.filter((task) => task.completed).length;
+        projectCompletionMap.set(proj.id, total > 0 && completed === total);
+      }
     });
 
     // Filter based on hideCompleted
@@ -709,8 +722,8 @@ function GoalsGraph() {
     const filteredGoalIds = new Set(filteredGoals.map((g) => g.id));
 
     const filteredProjects = hideCompleted
-      ? activeProjects.filter((proj) => !projectCompletionMap.get(proj.id))
-      : activeProjects;
+      ? graphProjects.filter((proj) => !projectCompletionMap.get(proj.id))
+      : graphProjects;
     const filteredProjectIds = new Set(filteredProjects.map((p) => p.id));
 
     // Build edges
@@ -719,7 +732,7 @@ function GoalsGraph() {
     // Child goal → Parent goal edges
     filteredGoals.forEach((goal) => {
       if (goal.parent_goal_id && filteredGoalIds.has(goal.parent_goal_id)) {
-        const childStats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
+        const childStats = getAggregatedStats(goal.id, g, gs, graphProjects, t);
         newEdges.push({
           id: `goal-${goal.parent_goal_id}-${goal.id}`,
           source: goal.id,
@@ -763,7 +776,7 @@ function GoalsGraph() {
 
     // Goal nodes
     const goalNodes: Node[] = filteredGoals.map((goal) => {
-      const aggStats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
+      const aggStats = getAggregatedStats(goal.id, g, gs, graphProjects, t);
       const isOrphan = !connectedIds.has(goal.id);
 
       return {
@@ -815,7 +828,7 @@ function GoalsGraph() {
     });
 
     return { nodes: [...goalNodes, ...projectNodes], edges: newEdges };
-  }, [hideCompleted, handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
+  }, [allProjects, hideCompleted, handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
 
   // Full layout: positions all nodes via Dagre. Called on button click and initial load.
   const applyLayout = useCallback((useSaved = false) => {
@@ -869,17 +882,17 @@ function GoalsGraph() {
 
   // Initial layout on first data load (try to restore saved positions)
   useEffect(() => {
-    if (initialLoadRef.current && (goals.length > 0 || projects.some((p) => !p.deleted_at))) {
+    if (initialLoadRef.current && (goals.length > 0 || allProjects.length > 0)) {
       initialLoadRef.current = false;
       applyLayout(true);
     }
-  }, [goals, projects, applyLayout]);
+  }, [goals, allProjects, applyLayout]);
 
   // Sync node data when store data or filter changes (without resetting positions)
   useEffect(() => {
     if (initialLoadRef.current) return; // skip before initial layout
     syncData();
-  }, [goals, goalStats, projects, tasks, hideCompleted, syncData]);
+  }, [goals, goalStats, allProjects, tasks, hideCompleted, syncData]);
 
   // Handle new connections (drag-to-connect)
   // With reversed edges: source = child (dragged from source handle at top),
@@ -899,14 +912,14 @@ function GoalsGraph() {
       await editProject(projectId, { goal_id: connection.target });
     }
 
-    await Promise.all([fetchGoals(), fetchProjects(), fetchGoalStats()]);
-  }, [editGoal, editProject, fetchGoals, fetchProjects, fetchGoalStats]);
+    await Promise.all([fetchGoals(), fetchProjects(), fetchAllProjects(), fetchGoalStats()]);
+  }, [editGoal, editProject, fetchGoals, fetchProjects, fetchAllProjects, fetchGoalStats]);
 
   const handleAutoLayout = useCallback(() => {
     applyLayout(false); // force dagre, ignore saved positions
   }, [applyLayout]);
 
-  const hasData = goals.length > 0 || projects.filter((p) => !p.deleted_at).length > 0;
+  const hasData = goals.length > 0 || allProjects.length > 0;
 
   return (
     <Stack style={{ height: 'calc(100vh - 80px)' }} gap="xs">
