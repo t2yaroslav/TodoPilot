@@ -14,7 +14,6 @@ import {
   type NodeTypes,
   type EdgeTypes,
   type NodeProps,
-  MarkerType,
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
@@ -386,7 +385,6 @@ function DeletableEdge({
   sourcePosition,
   targetPosition,
   data,
-  markerEnd,
 }: {
   id: string;
   sourceX: number;
@@ -411,6 +409,20 @@ function DeletableEdge({
     targetPosition,
   });
 
+  // Fixed-size arrowhead at target end
+  const arrowSize = 8;
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const ax = targetX - ux * arrowSize * 1.5;
+  const ay = targetY - uy * arrowSize * 1.5;
+  const px = -uy * arrowSize;
+  const py = ux * arrowSize;
+  const arrowPath = `M${targetX},${targetY} L${ax + px},${ay + py} L${ax - px},${ay - py} Z`;
+  const arrowColor = hovered ? 'var(--mantine-color-red-5)' : 'var(--mantine-color-dimmed)';
+
   return (
     <>
       {/* Invisible wider path for hover detection */}
@@ -425,13 +437,13 @@ function DeletableEdge({
       <BaseEdge
         id={id}
         path={edgePath}
-        markerEnd={markerEnd}
         style={{
           stroke: hovered ? 'var(--mantine-color-red-5)' : 'var(--mantine-color-dimmed)',
           strokeWidth: hovered ? baseWidth + 1 : baseWidth,
           opacity: hovered ? 1 : 0.7,
         }}
       />
+      <path d={arrowPath} fill={arrowColor} opacity={hovered ? 1 : 0.7} />
       {hovered && (
         <EdgeLabelRenderer>
           <div
@@ -674,7 +686,6 @@ function GoalsGraph() {
             edgeTarget: goal.id,
             taskCount: childStats.total,
           },
-          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
         });
       }
     });
@@ -696,7 +707,6 @@ function GoalsGraph() {
             edgeTarget: `project-${proj.id}`,
             taskCount: projTotal,
           },
-          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
         });
       }
     });
@@ -915,7 +925,6 @@ function GoalsGraph() {
             maxZoom={2}
             defaultEdgeOptions={{
               type: 'deletable',
-              markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
             }}
             proOptions={{ hideAttribution: true }}
           >
