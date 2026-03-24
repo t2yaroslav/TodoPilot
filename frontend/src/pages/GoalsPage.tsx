@@ -39,6 +39,7 @@ import {
   Menu,
   ThemeIcon,
   Box,
+  SegmentedControl,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -52,6 +53,7 @@ import {
   IconLinkOff,
   IconLayoutDistributeVertical,
   IconSubtask,
+  IconCheck,
 } from '@tabler/icons-react';
 import { useTaskStore, Goal, Project, Task } from '@/stores/taskStore';
 
@@ -202,6 +204,7 @@ interface GoalNodeData {
   total: number;
   completed: number;
   isOrphan: boolean;
+  isCompleted: boolean;
   goalId: string;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -213,6 +216,7 @@ interface GoalNodeData {
 
 function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
   const progress = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+  const done = data.isCompleted;
 
   return (
     <Paper
@@ -220,17 +224,30 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
       radius="md"
       withBorder
       style={{
-        borderLeft: `4px solid ${data.color}`,
+        borderLeft: `4px solid ${done ? 'var(--mantine-color-green-6)' : data.color}`,
         width: NODE_WIDTH,
         minHeight: GOAL_NODE_HEIGHT,
         background: 'var(--mantine-color-body)',
         position: 'relative',
+        opacity: done ? 0.55 : 1,
       }}
     >
       {/* Source at top: when this goal is a child, edge goes UP to parent */}
-      <Handle type="source" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
 
-      {data.isOrphan && (
+      {done && (
+        <ThemeIcon
+          variant="filled"
+          color="green"
+          size="sm"
+          radius="xl"
+          style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
+        >
+          <IconCheck size={12} />
+        </ThemeIcon>
+      )}
+
+      {!done && data.isOrphan && (
         <ThemeIcon
           variant="light"
           color="yellow"
@@ -244,10 +261,10 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
 
       <Group justify="space-between" mb={4} wrap="nowrap">
         <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
-          <ThemeIcon variant="light" color={data.color} size="sm" radius="xl">
+          <ThemeIcon variant="light" color={done ? 'green' : data.color} size="sm" radius="xl">
             <IconTarget size={14} />
           </ThemeIcon>
-          <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.3 }}>
+          <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.3, textDecoration: done ? 'line-through' : undefined }} c={done ? 'dimmed' : undefined}>
             {data.label}
           </Text>
         </Group>
@@ -285,14 +302,14 @@ function GoalNodeComponent({ data }: NodeProps<Node<GoalNodeData>>) {
         <Text size="xs" c="dimmed">
           {data.completed}/{data.total} задач
         </Text>
-        <Text size="xs" fw={600} c={progress === 100 ? 'green' : undefined}>
+        <Text size="xs" fw={600} c={done ? 'green' : undefined}>
           {progress}%
         </Text>
       </Group>
-      <Progress value={progress} color={progress === 100 ? 'green' : data.color} size="xs" radius="xl" />
+      <Progress value={progress} color={done ? 'green' : data.color} size="xs" radius="xl" />
 
       {/* Target at bottom: when this goal is a parent, receives edges from children below */}
-      <Handle type="target" position={Position.Bottom} style={{ background: data.color, width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
     </Paper>
   );
 }
@@ -305,6 +322,7 @@ interface ProjectNodeData {
   total: number;
   completed: number;
   isOrphan: boolean;
+  isCompleted: boolean;
   projectId: string;
   onUnlink: (id: string) => void;
   hasGoal: boolean;
@@ -312,23 +330,38 @@ interface ProjectNodeData {
 }
 
 function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
+  const done = data.isCompleted;
+
   return (
     <Paper
       p="xs"
       radius="md"
       withBorder
       style={{
-        borderLeft: `4px solid ${data.color}`,
+        borderLeft: `4px solid ${done ? 'var(--mantine-color-green-6)' : data.color}`,
         width: NODE_WIDTH,
         minHeight: PROJECT_NODE_HEIGHT,
         background: 'var(--mantine-color-body)',
         position: 'relative',
+        opacity: done ? 0.55 : 1,
       }}
     >
       {/* Source at top: edge goes UP to parent goal */}
-      <Handle type="source" position={Position.Top} style={{ background: data.color, width: 10, height: 10 }} />
+      <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
 
-      {data.isOrphan && (
+      {done && (
+        <ThemeIcon
+          variant="filled"
+          color="green"
+          size="sm"
+          radius="xl"
+          style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
+        >
+          <IconCheck size={12} />
+        </ThemeIcon>
+      )}
+
+      {!done && data.isOrphan && (
         <ThemeIcon
           variant="light"
           color="yellow"
@@ -342,10 +375,10 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
 
       <Group justify="space-between" mb={4} wrap="nowrap">
         <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
-          <ThemeIcon variant="light" color={data.color} size="sm" radius="xl">
+          <ThemeIcon variant="light" color={done ? 'green' : data.color} size="sm" radius="xl">
             <IconFolder size={14} />
           </ThemeIcon>
-          <Text size="xs" fw={600} lineClamp={1}>
+          <Text size="xs" fw={600} lineClamp={1} style={{ textDecoration: done ? 'line-through' : undefined }} c={done ? 'dimmed' : undefined}>
             {data.label}
           </Text>
         </Group>
@@ -361,7 +394,7 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
       </Text>
 
       {/* Target at bottom: for drag-to-connect from goal above */}
-      <Handle type="target" position={Position.Bottom} style={{ background: data.color, width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Bottom} style={{ background: done ? 'var(--mantine-color-green-6)' : data.color, width: 10, height: 10 }} />
     </Paper>
   );
 }
@@ -581,6 +614,7 @@ function GoalsGraph() {
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [viewFilter, setViewFilter] = useState<string>('all');
 
   // Wrap onNodesChange to debounce-save positions to localStorage
   const onNodesChange = useCallback((changes: Parameters<typeof onNodesChangeBase>[0]) => {
@@ -653,17 +687,43 @@ function GoalsGraph() {
     const { goals: g, goalStats: gs, projects: p, tasks: t } = useTaskStore.getState();
     const activeProjects = p.filter((pr) => !pr.deleted_at);
 
+    // Precompute completion status for goals and projects
+    const goalCompletionMap = new Map<string, boolean>();
+    g.forEach((goal) => {
+      const stats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
+      goalCompletionMap.set(goal.id, stats.total > 0 && stats.completed === stats.total);
+    });
+
+    const projectCompletionMap = new Map<string, boolean>();
+    activeProjects.forEach((proj) => {
+      const projTasks = t.filter((task) => task.project_id === proj.id);
+      const total = projTasks.length;
+      const completed = projTasks.filter((task) => task.completed).length;
+      projectCompletionMap.set(proj.id, total > 0 && completed === total);
+    });
+
+    // Filter based on viewFilter
+    const filteredGoals = viewFilter === 'active'
+      ? g.filter((goal) => !goalCompletionMap.get(goal.id))
+      : g;
+    const filteredGoalIds = new Set(filteredGoals.map((g) => g.id));
+
+    const filteredProjects = viewFilter === 'active'
+      ? activeProjects.filter((proj) => !projectCompletionMap.get(proj.id))
+      : activeProjects;
+    const filteredProjectIds = new Set(filteredProjects.map((p) => p.id));
+
     // Build edges
     const newEdges: Edge[] = [];
 
-    // Child goal → Parent goal edges (arrows point from child UP to parent)
-    g.forEach((goal) => {
-      if (goal.parent_goal_id) {
+    // Child goal → Parent goal edges
+    filteredGoals.forEach((goal) => {
+      if (goal.parent_goal_id && filteredGoalIds.has(goal.parent_goal_id)) {
         const childStats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
         newEdges.push({
           id: `goal-${goal.parent_goal_id}-${goal.id}`,
-          source: goal.id,              // child (below)
-          target: goal.parent_goal_id,  // parent (above)
+          source: goal.id,
+          target: goal.parent_goal_id,
           type: 'deletable',
           data: {
             onDelete: handleEdgeDelete,
@@ -675,16 +735,15 @@ function GoalsGraph() {
       }
     });
 
-    // Project → Goal edges (arrows point from project UP to goal)
-    activeProjects.forEach((proj) => {
-      if (proj.goal_id) {
+    // Project → Goal edges
+    filteredProjects.forEach((proj) => {
+      if (proj.goal_id && filteredGoalIds.has(proj.goal_id)) {
         const projTasks = t.filter((task) => task.project_id === proj.id);
         const projTotal = projTasks.length;
-        const projCompleted = projTasks.filter((task) => task.completed).length;
         newEdges.push({
           id: `proj-${proj.goal_id}-${proj.id}`,
-          source: `project-${proj.id}`,  // project (below)
-          target: proj.goal_id,          // goal (above)
+          source: `project-${proj.id}`,
+          target: proj.goal_id,
           type: 'deletable',
           data: {
             onDelete: handleEdgeDelete,
@@ -703,7 +762,7 @@ function GoalsGraph() {
     });
 
     // Goal nodes
-    const goalNodes: Node[] = g.map((goal) => {
+    const goalNodes: Node[] = filteredGoals.map((goal) => {
       const aggStats = getAggregatedStats(goal.id, g, gs, activeProjects, t);
       const isOrphan = !connectedIds.has(goal.id);
 
@@ -718,6 +777,7 @@ function GoalsGraph() {
           total: aggStats.total,
           completed: aggStats.completed,
           isOrphan,
+          isCompleted: goalCompletionMap.get(goal.id) || false,
           goalId: goal.id,
           onEdit: handleEdit,
           onDelete: handleDelete,
@@ -729,7 +789,7 @@ function GoalsGraph() {
     });
 
     // Project nodes
-    const projectNodes: Node[] = activeProjects.map((proj) => {
+    const projectNodes: Node[] = filteredProjects.map((proj) => {
       const projTasks = t.filter((task) => task.project_id === proj.id);
       const total = projTasks.length;
       const completed = projTasks.filter((task) => task.completed).length;
@@ -746,6 +806,7 @@ function GoalsGraph() {
           total,
           completed,
           isOrphan,
+          isCompleted: projectCompletionMap.get(proj.id) || false,
           projectId: proj.id,
           onUnlink: handleUnlinkProject,
           hasGoal: !!proj.goal_id,
@@ -754,7 +815,7 @@ function GoalsGraph() {
     });
 
     return { nodes: [...goalNodes, ...projectNodes], edges: newEdges };
-  }, [handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
+  }, [viewFilter, handleEdit, handleDelete, handleAddChild, handleUnlinkGoal, handleUnlinkProject, handleEdgeDelete]);
 
   // Full layout: positions all nodes via Dagre. Called on button click and initial load.
   const applyLayout = useCallback((useSaved = false) => {
@@ -851,10 +912,21 @@ function GoalsGraph() {
     <Stack style={{ height: 'calc(100vh - 80px)' }} gap="xs">
       {/* Header */}
       <Group justify="space-between">
-        <div>
-          <Title order={3}>Дерево целей</Title>
-          <Text size="sm" c="dimmed">Связывайте цели и проекты перетаскиванием</Text>
-        </div>
+        <Group gap="md">
+          <div>
+            <Title order={3}>Дерево целей</Title>
+            <Text size="sm" c="dimmed">Связывайте цели и проекты перетаскиванием</Text>
+          </div>
+          <SegmentedControl
+            value={viewFilter}
+            onChange={setViewFilter}
+            size="xs"
+            data={[
+              { label: 'Все', value: 'all' },
+              { label: 'Активные', value: 'active' },
+            ]}
+          />
+        </Group>
         <Group gap="xs">
           <Button
             variant="light"
