@@ -55,7 +55,7 @@ async def chat(
         kwargs["api_base"] = settings.llm_api_base
 
     response = await litellm.acompletion(**kwargs)
-    return response.choices[0].message.content
+    return response.choices[0].message.content or ""
 
 
 async def analyze_productivity(

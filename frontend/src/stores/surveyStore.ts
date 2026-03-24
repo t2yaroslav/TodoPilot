@@ -207,10 +207,17 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
         }),
       );
 
+      // Only mark as done if AI returned non-empty results
+      const hasSuggestions = suggestions && suggestions.length > 0;
       const newSnapshots = {
         ...get().genSnapshots,
-        [step]: { deps: currentDeps, done: true },
+        [step]: { deps: currentDeps, done: hasSuggestions },
       };
+
+      if (!hasSuggestions) {
+        set({ genSnapshots: newSnapshots, generating: false });
+        return;
+      }
 
       // Prepend AI suggestions to existing user items (deduplicate)
       const currentState = get();
