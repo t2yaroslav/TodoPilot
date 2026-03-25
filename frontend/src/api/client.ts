@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { notifications } from '@mantine/notifications';
+import { logger } from '../lib/logger';
 
 const api = axios.create({ baseURL: '/api' });
 
@@ -60,6 +61,13 @@ api.interceptors.response.use(
     // Build detailed dev info from all available fields
     const hasDevInfo = data?.traceback || data?.db_error || data?.validation_errors;
     const detail = hasDevInfo ? buildDevDetail(data) : (data?.detail || '');
+
+    logger.error(`API ${status}: ${message}`, {
+      status,
+      type: data?.type,
+      url: err.config?.url,
+      method: err.config?.method,
+    });
 
     notifications.show({
       title: `Ошибка ${status}${data?.type ? ` (${data.type})` : ''}`,

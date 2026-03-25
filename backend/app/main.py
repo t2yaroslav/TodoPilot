@@ -1,6 +1,8 @@
 import logging
 import os
+import time
 import traceback
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -12,18 +14,19 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .config import settings
 from .database import engine
+from .logging_config import setup_logging
 from .models import Base
-from .routers import ai, ai_tasks, auth, feedback, goals, projects, stats, survey, tasks
+from .routers import ai, ai_tasks, auth, feedback, goals, logs, projects, stats, survey, tasks
 
 DEV_MODE = os.getenv("FASTAPI_ENV", "development") != "production"
 
-# LLM debug logging - activate with LLM_DEBUG=true in .env
+# Centralized structured logging
+setup_logging(level=settings.log_level, fmt=settings.log_format)
+logger = logging.getLogger("todopilot.http")
+
+# LLM debug logging - the todopilot.llm logger inherits formatter from setup_logging()
 if settings.llm_debug:
-    _llm_logger = logging.getLogger("todopilot.llm")
-    _llm_logger.setLevel(logging.DEBUG)
-    _handler = logging.StreamHandler()
-    _handler.setFormatter(logging.Formatter("%(asctime)s %(message)s", datefmt="%H:%M:%S"))
-    _llm_logger.addHandler(_handler)
+    logging.getLogger("todopilot.llm").setLevel(logging.DEBUG)
 
 
 def _build_error_detail(request: Request, exc: Exception) -> dict:
@@ -105,14 +108,50 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    request_id = uuid.uuid4().hex[:8]
+    start = time.time()
+    response = await call_next(request)
+    duration_ms = int((time.time() - start) * 1000)
+
+    if request.url.path != "/api/health":
+        log_level = logging.WARNING if response.status_code >= 400 else logging.INFO
+        logger.log(
+            log_level,
+            "%s %s %s",
+            request.method,
+            request.url.path,
+            response.status_code,
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": duration_ms,
+            },
+        )
+
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    logger.error(
+        "DB error: %s %s — %s", request.method, request.url.path, exc,
+        extra={"error_type": type(exc).__name__, "path": str(request.url.path)},
+    )
     detail = _build_error_detail(request, exc)
     return JSONResponse(status_code=500, content=detail)
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.warning(
+        "Validation error: %s %s", request.method, request.url.path,
+        extra={"error_type": "RequestValidationError", "path": str(request.url.path)},
+    )
     detail: dict = {
         "error": "Ошибка валидации запроса",
         "type": "RequestValidationError",
@@ -130,6 +169,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled error: %s %s — %s", request.method, request.url.path, exc,
+        extra={"error_type": type(exc).__name__, "path": str(request.url.path)},
+        exc_info=True,
+    )
     detail = _build_error_detail(request, exc)
     return JSONResponse(status_code=500, content=detail)
 
@@ -143,6 +187,7 @@ app.include_router(ai.router, prefix="/api")
 app.include_router(ai_tasks.router, prefix="/api")
 app.include_router(survey.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
+app.include_router(logs.router, prefix="/api")
 
 
 @app.get("/api/health")

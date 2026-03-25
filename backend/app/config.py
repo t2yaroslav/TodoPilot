@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     llm_debug: bool = False
     admin_email: str = ""  # email of admin user (gets is_admin=True on login)
     upload_dir: str = "uploads"
+    log_level: str = "INFO"
+    log_format: str = "json"  # "json" or "text"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
