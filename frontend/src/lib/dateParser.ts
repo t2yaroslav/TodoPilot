@@ -53,7 +53,7 @@ function nextWeekday(isoDay: number): Date {
   const today = dayjs();
   const current = today.day() === 0 ? 7 : today.day(); // convert to ISO
   let diff = isoDay - current;
-  if (diff <= 0) diff += 7;
+  if (diff < 0) diff += 7;
   return today.add(diff, 'day').toDate();
 }
 
@@ -257,7 +257,7 @@ function nextMonthlyOccurrence(days: number[]): Date {
   const today = dayjs();
   const currentDay = today.date();
   // Find the next day in this month
-  const futureDays = days.filter((d) => d > currentDay);
+  const futureDays = days.filter((d) => d >= currentDay);
   if (futureDays.length > 0) {
     return today.date(futureDays[0]).toDate();
   }
