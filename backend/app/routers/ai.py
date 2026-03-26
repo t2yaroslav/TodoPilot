@@ -17,10 +17,34 @@ from ..schemas import (
     TaskAction,
 )
 from ..services import ai_service
+from ..services.ai_service import AI_PROVIDERS
 from ..services import task_queue
 from .auth import get_current_user
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+
+
+@router.get("/providers")
+async def get_providers():
+    """Return available AI providers and their models."""
+    return AI_PROVIDERS
+
+
+@router.post("/test-connection")
+async def test_connection(
+    user: User = Depends(get_current_user),
+):
+    """Test the user's AI provider connection with a simple prompt."""
+    user_settings = user.settings or {}
+
+    try:
+        result = await ai_service.chat(
+            [{"role": "user", "content": "Ответь одним словом: работает"}],
+            user_settings=user_settings,
+        )
+        return {"status": "ok", "reply": result}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 async def _gather_stats(user: User, db: AsyncSession) -> dict:
@@ -168,7 +192,7 @@ async def ai_chat(
 
     # Submit LLM call to background queue
     task_id = await task_queue.submit(
-        ai_service.chat(messages, user_profile=user.profile_text, tasks_context=tasks_ctx)
+        ai_service.chat(messages, user_profile=user.profile_text, tasks_context=tasks_ctx, user_settings=user.settings)
     )
     return {"task_id": task_id}
 
@@ -182,7 +206,7 @@ async def coaching_analysis(
     stats = await _gather_stats(user, db)
 
     async def _run():
-        analysis = await ai_service.coaching_analysis(stats, user_profile=user.profile_text)
+        analysis = await ai_service.coaching_analysis(stats, user_profile=user.profile_text, user_settings=user.settings)
         return {"analysis": analysis, "stats": stats}
 
     task_id = await task_queue.submit(_run())
@@ -197,7 +221,7 @@ async def brain_dump(
 ):
     """Extract tasks, projects, goals from brain dump text."""
     async def _run():
-        raw = await ai_service.brain_dump_extract(body.text, user_profile=user.profile_text)
+        raw = await ai_service.brain_dump_extract(body.text, user_profile=user.profile_text, user_settings=user.settings)
         try:
             parsed = json.loads(raw)
             items = [BrainDumpItem(**item).model_dump() for item in parsed.get("items", [])]
@@ -362,7 +386,7 @@ async def morning_plan(
     profile = user.profile_text
 
     task_id = await task_queue.submit(
-        ai_service.morning_plan(today_tasks, all_tasks, goals_list, stats, user_profile=profile)
+        ai_service.morning_plan(today_tasks, all_tasks, goals_list, stats, user_profile=profile, user_settings=user.settings)
     )
     return {"task_id": task_id}
 
@@ -392,6 +416,7 @@ async def smart_chat(
     # Build message history
     messages = body.history + [{"role": "user", "content": body.message}]
     profile = user.profile_text
+    u_settings = user.settings
 
     async def _run():
         raw = await ai_service.chat_with_actions(
@@ -399,6 +424,7 @@ async def smart_chat(
             tasks_context=tasks_ctx,
             projects_context=projects_ctx,
             user_profile=profile,
+            user_settings=u_settings,
         )
         try:
             parsed = json.loads(raw)
@@ -493,7 +519,7 @@ async def productivity_analysis(
     profile = user.profile_text
 
     task_id = await task_queue.submit(
-        ai_service.analyze_productivity(tasks, user_profile=profile)
+        ai_service.analyze_productivity(tasks, user_profile=profile, user_settings=user.settings)
     )
     return {"task_id": task_id}
 
@@ -514,7 +540,7 @@ async def weekly_retrospective(
     profile = user.profile_text
 
     task_id = await task_queue.submit(
-        ai_service.weekly_retrospective(tasks, goals, user_profile=profile)
+        ai_service.weekly_retrospective(tasks, goals, user_profile=profile, user_settings=user.settings)
     )
     return {"task_id": task_id}
 
@@ -523,6 +549,6 @@ async def weekly_retrospective(
 async def onboarding(body: AIMessage, user: User = Depends(get_current_user)):
     history = []
     task_id = await task_queue.submit(
-        ai_service.onboarding_chat(body.message, history)
+        ai_service.onboarding_chat(body.message, history, user_settings=user.settings)
     )
     return {"task_id": task_id}

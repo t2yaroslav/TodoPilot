@@ -145,6 +145,10 @@ export const getProductivity = (days?: number) => api.get('/stats/productivity',
 export const getDashboardToken = () => api.get('/stats/dashboard-token');
 export const getDashboard = (token: string, days?: number) => api.get(`/stats/dashboard/${token}`, { params: days ? { days } : undefined });
 
+// AI providers
+export const getAIProviders = () => api.get('/ai/providers');
+export const testAIConnection = () => api.post('/ai/test-connection');
+
 // AI
 export const aiChat = (message: string) => api.post('/ai/chat', { message });
 export const aiProductivity = () => api.get('/ai/productivity-analysis');
