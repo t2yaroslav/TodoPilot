@@ -19,4 +19,5 @@ services:
       - "3000:3000"
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
       API_PROXY_TARGET: http://backend:8000
