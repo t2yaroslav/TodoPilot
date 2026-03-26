@@ -36,7 +36,7 @@ AI_PROVIDERS = {
     },
     "ollama": {
         "label": "Ollama (локальный)",
-        "models": ["ollama/llama3", "ollama/llama3.1", "ollama/mistral", "ollama/gemma2"],
+        "models": [],
         "requires_api_key": False,
         "requires_api_base": True,
         "default_api_base": "http://localhost:11434",

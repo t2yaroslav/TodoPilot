@@ -175,16 +175,27 @@ export function SettingsPage() {
 
         {currentProvider && (
           <>
-            <Select
-              label="Модель"
-              placeholder="Выберите модель"
-              data={modelOptions}
-              value={selectedModel || null}
-              onChange={(v) => { setSelectedModel(v || ''); setConnectionStatus('none'); }}
-              searchable
-              allowDeselect={false}
-              mb="sm"
-            />
+            {currentProvider.requires_api_base ? (
+              <TextInput
+                label="Модель"
+                placeholder="ollama/llama3, ollama/mistral, ollama/gpt-oss:20b..."
+                description="Введите название модели в формате ollama/название"
+                value={selectedModel}
+                onChange={(e) => { setSelectedModel(e.currentTarget.value); setConnectionStatus('none'); }}
+                mb="sm"
+              />
+            ) : (
+              <Select
+                label="Модель"
+                placeholder="Выберите модель"
+                data={modelOptions}
+                value={selectedModel || null}
+                onChange={(v) => { setSelectedModel(v || ''); setConnectionStatus('none'); }}
+                searchable
+                allowDeselect={false}
+                mb="sm"
+              />
+            )}
 
             {currentProvider.requires_api_key && (
               <PasswordInput
