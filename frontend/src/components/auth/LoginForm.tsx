@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Paper, TextInput, Button, Stack, Text, PinInput, Group, Title, Divider } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
+import { IconBrandGoogle } from '@tabler/icons-react';
 import { sendCode, verifyCode, googleAuth } from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -20,7 +21,6 @@ export function LoginForm() {
     try {
       const { data } = await sendCode(email);
       setStep('code');
-      // Dev mode: show code in notification
       if (data.dev_code) {
         notifications.show({ title: 'Dev mode', message: `Код: ${data.dev_code}`, color: 'yellow' });
       }
@@ -45,19 +45,23 @@ export function LoginForm() {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
-    if (!credentialResponse.credential) return;
-    setLoading(true);
-    try {
-      const { data } = await googleAuth(credentialResponse.credential);
-      setToken(data.access_token);
-      window.location.href = '/today';
-    } catch {
-      notifications.show({ title: 'Ошибка', message: 'Не удалось войти через Google', color: 'red' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      try {
+        const { data } = await googleAuth(tokenResponse.access_token);
+        setToken(data.access_token);
+        window.location.href = '/today';
+      } catch {
+        notifications.show({ title: 'Ошибка', message: 'Не удалось войти через Google', color: 'red' });
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      notifications.show({ title: 'Ошибка', message: 'Ошибка Google Sign-In', color: 'red' });
+    },
+  });
 
   return (
     <Paper p="xl" radius="md" withBorder w={400}>
@@ -84,17 +88,15 @@ export function LoginForm() {
             {googleClientId && (
               <>
                 <Divider label="или" labelPosition="center" />
-                <Group justify="center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={() => {
-                      notifications.show({ title: 'Ошибка', message: 'Ошибка Google Sign-In', color: 'red' });
-                    }}
-                    size="large"
-                    width={352}
-                    text="signin_with"
-                  />
-                </Group>
+                <Button
+                  variant="default"
+                  leftSection={<IconBrandGoogle size={18} />}
+                  onClick={() => googleLogin()}
+                  loading={loading}
+                  fullWidth
+                >
+                  Войти через Google
+                </Button>
               </>
             )}
           </>
