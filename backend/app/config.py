@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/todopilot"
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 10080
+    jwt_expire_minutes: int = 525600
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = ""
