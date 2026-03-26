@@ -12,7 +12,10 @@ services:
         max-file: "5"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     depends_on:
       - backend

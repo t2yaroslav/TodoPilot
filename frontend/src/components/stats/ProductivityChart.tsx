@@ -14,8 +14,11 @@ export function ProductivityChart() {
       setData(statsRes.data);
       const projMap: Record<string, { title: string; color: string }> = {};
       projRes.data.forEach((p: any) => {
-        projMap[p.id] = { title: p.title, color: p.color };
+        if (!p.deleted_at) {
+          projMap[p.id] = { title: p.title, color: p.color };
+        }
       });
+      projMap['archived'] = { title: 'Завершённые', color: '#9ca3af' };
       setProjects(projMap);
     };
     load();

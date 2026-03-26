@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 import aiosmtplib
 from email.message import EmailMessage
 from fastapi import APIRouter, Depends, HTTPException
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import settings
 from ..database import get_db
 from ..models import AuthCode, User
-from ..schemas import AuthRequest, AuthVerify, TokenResponse, UserOut, UserUpdate
+from ..schemas import AuthRequest, AuthVerify, GoogleAuthRequest, TokenResponse, UserOut, UserUpdate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -88,6 +90,37 @@ async def verify_code(body: AuthVerify, db: AsyncSession = Depends(get_db)):
         user = User(email=body.email, is_admin=is_admin)
         db.add(user)
     elif settings.admin_email and body.email == settings.admin_email and not user.is_admin:
+        user.is_admin = True
+
+    await db.commit()
+    await db.refresh(user)
+    return TokenResponse(access_token=create_token(str(user.id)))
+
+
+@router.post("/google", response_model=TokenResponse)
+async def google_auth(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+    if not settings.google_client_id:
+        raise HTTPException(status_code=400, detail="Google auth is not configured")
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            body.credential, google_requests.Request(), settings.google_client_id
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid Google token")
+
+    email = idinfo.get("email")
+    if not email or not idinfo.get("email_verified"):
+        raise HTTPException(status_code=400, detail="Email not verified by Google")
+
+    # Find or create user
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        name = idinfo.get("name")
+        is_admin = bool(settings.admin_email and email == settings.admin_email)
+        user = User(email=email, name=name, is_admin=is_admin)
+        db.add(user)
+    elif settings.admin_email and email == settings.admin_email and not user.is_admin:
         user.is_admin = True
 
     await db.commit()

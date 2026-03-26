@@ -7,10 +7,13 @@ import { createRoot } from 'react-dom/client';
 import { MantineProvider } from '@mantine/core';
 import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import App from './App';
 import { theme } from './lib/theme';
 import { logger } from './lib/logger';
 import 'dayjs/locale/ru';
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 // Global browser error handlers — send uncaught errors to backend
 window.onerror = (message, source, lineno, colno, error) => {
@@ -32,10 +35,12 @@ window.onunhandledrejection = (event) => {
 };
 
 createRoot(document.getElementById('root')!).render(
-  <MantineProvider theme={theme} defaultColorScheme="light">
-    <DatesProvider settings={{ locale: 'ru' }}>
-      <Notifications position="top-right" />
-      <App />
-    </DatesProvider>
-  </MantineProvider>
+  <GoogleOAuthProvider clientId={googleClientId}>
+    <MantineProvider theme={theme} defaultColorScheme="light">
+      <DatesProvider settings={{ locale: 'ru' }}>
+        <Notifications position="top-right" />
+        <App />
+      </DatesProvider>
+    </MantineProvider>
+  </GoogleOAuthProvider>
 );
