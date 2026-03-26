@@ -21,6 +21,12 @@ async def productivity(
 ):
     since = datetime.now(timezone.utc) - timedelta(days=days)
 
+    # Determine deleted project IDs to merge into "archived"
+    proj_result = await db.execute(
+        select(Project.id).where(Project.user_id == user.id, Project.deleted_at != None)  # noqa: E711
+    )
+    deleted_pids = {str(row[0]) for row in proj_result.all()}
+
     # Total per day
     result = await db.execute(
         select(cast(Task.completed_at, Date).label("day"), func.count().label("cnt"))
@@ -30,7 +36,7 @@ async def productivity(
     )
     day_counts = {str(row.day): row.cnt for row in result.all()}
 
-    # Breakdown by project
+    # Breakdown by project (merge deleted into "archived")
     result2 = await db.execute(
         select(
             cast(Task.completed_at, Date).label("day"),
@@ -45,7 +51,10 @@ async def productivity(
     for row in result2.all():
         d = str(row.day)
         pid = str(row.project_id) if row.project_id else "inbox"
-        breakdown.setdefault(d, {})[pid] = row.cnt
+        if pid in deleted_pids:
+            pid = "archived"
+        day_entry = breakdown.setdefault(d, {})
+        day_entry[pid] = day_entry.get(pid, 0) + row.cnt
 
     # Fill all days
     stats = []
@@ -87,19 +96,15 @@ async def get_dashboard(
     since = datetime.now(timezone.utc) - timedelta(days=days)
     since_week = datetime.now(timezone.utc) - timedelta(days=7)
 
-    # Projects (include soft-deleted so historical chart data is attributed correctly)
+    # Projects — active only; deleted projects' tasks merge into "archived" bucket
     proj_result = await db.execute(
         select(Project).where(Project.user_id == user.id).order_by(Project.position)
     )
     projects = proj_result.scalars().all()
-    deleted_color = "#9ca3af"
+    deleted_pids = {str(p.id) for p in projects if p.deleted_at}
     proj_map = {
-        str(p.id): {
-            "id": str(p.id),
-            "title": f"{p.title} (архив)" if p.deleted_at else p.title,
-            "color": deleted_color if p.deleted_at else p.color,
-        }
-        for p in projects
+        str(p.id): {"id": str(p.id), "title": p.title, "color": p.color}
+        for p in projects if not p.deleted_at
     }
 
     # 1. By project per day (stacked area chart)
@@ -117,10 +122,14 @@ async def get_dashboard(
     for row in r1.all():
         d = str(row.day)
         pid = str(row.project_id) if row.project_id else "inbox"
-        proj_day_map.setdefault(d, {})[pid] = row.cnt
+        # Merge deleted/unknown projects into "archived"
+        if pid not in proj_map and pid != "inbox":
+            pid = "archived"
+        day_entry = proj_day_map.setdefault(d, {})
+        day_entry[pid] = day_entry.get(pid, 0) + row.cnt
 
     by_project_per_day = []
-    all_pids = list(proj_map.keys()) + ["inbox"]
+    all_pids = list(proj_map.keys()) + ["inbox", "archived"]
     for i in range(days):
         d = str((since + timedelta(days=i + 1)).date())
         entry: dict = {"date": d}  # YYYY-MM-DD (frontend formats for display)
@@ -159,12 +168,17 @@ async def get_dashboard(
         .group_by(Task.project_id)
     )
     weekly_by_project = []
+    archived_weekly_cnt = 0
     for row in r3.all():
         pid = str(row.project_id) if row.project_id else None
-        if pid and pid in proj_map:
+        if pid and pid not in proj_map:
+            archived_weekly_cnt += row.cnt
+        elif pid and pid in proj_map:
             weekly_by_project.append({"id": pid, "title": proj_map[pid]["title"], "color": proj_map[pid]["color"], "count": row.cnt})
         else:
             weekly_by_project.append({"id": "inbox", "title": "Входящие", "color": "#94a3b8", "count": row.cnt})
+    if archived_weekly_cnt > 0:
+        weekly_by_project.append({"id": "archived", "title": "Завершённые", "color": "#9ca3af", "count": archived_weekly_cnt})
 
     # 4. By weekday — horizontal bar chart
     # PostgreSQL DOW: 0=Sunday, 1=Monday, ..., 6=Saturday
