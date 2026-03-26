@@ -87,12 +87,20 @@ async def get_dashboard(
     since = datetime.now(timezone.utc) - timedelta(days=days)
     since_week = datetime.now(timezone.utc) - timedelta(days=7)
 
-    # Projects
+    # Projects (include soft-deleted so historical chart data is attributed correctly)
     proj_result = await db.execute(
         select(Project).where(Project.user_id == user.id).order_by(Project.position)
     )
     projects = proj_result.scalars().all()
-    proj_map = {str(p.id): {"id": str(p.id), "title": p.title, "color": p.color} for p in projects}
+    deleted_color = "#9ca3af"
+    proj_map = {
+        str(p.id): {
+            "id": str(p.id),
+            "title": f"{p.title} (архив)" if p.deleted_at else p.title,
+            "color": deleted_color if p.deleted_at else p.color,
+        }
+        for p in projects
+    }
 
     # 1. By project per day (stacked area chart)
     r1 = await db.execute(
