@@ -14,6 +14,10 @@ class AuthVerify(BaseModel):
     code: str
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str  # Google ID token from Google Sign-In
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

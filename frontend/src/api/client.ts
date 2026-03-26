@@ -116,6 +116,7 @@ export const getAvgDuration = (operationType: string) =>
 // Auth
 export const sendCode = (email: string) => api.post('/auth/send-code', { email });
 export const verifyCode = (email: string, code: string) => api.post('/auth/verify', { email, code });
+export const googleAuth = (credential: string) => api.post('/auth/google', { credential });
 export const getMe = () => api.get('/auth/me');
 export const updateMe = (data: Record<string, unknown>) => api.patch('/auth/me', data);
 

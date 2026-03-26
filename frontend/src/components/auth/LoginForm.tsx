@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Paper, TextInput, Button, Stack, Text, PinInput, Group, Title } from '@mantine/core';
+import { Paper, TextInput, Button, Stack, Text, PinInput, Group, Title, Divider } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { sendCode, verifyCode } from '@/api/client';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
+import { sendCode, verifyCode, googleAuth } from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
 
 export function LoginForm() {
@@ -10,6 +11,8 @@ export function LoginForm() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { setToken } = useAuthStore();
+
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   const handleSendCode = async () => {
     if (!email.trim()) return;
@@ -42,6 +45,20 @@ export function LoginForm() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) return;
+    setLoading(true);
+    try {
+      const { data } = await googleAuth(credentialResponse.credential);
+      setToken(data.access_token);
+      window.location.href = '/today';
+    } catch {
+      notifications.show({ title: 'Ошибка', message: 'Не удалось войти через Google', color: 'red' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Paper p="xl" radius="md" withBorder w={400}>
       <Stack>
@@ -63,6 +80,23 @@ export function LoginForm() {
             <Button onClick={handleSendCode} loading={loading} fullWidth>
               Получить код
             </Button>
+
+            {googleClientId && (
+              <>
+                <Divider label="или" labelPosition="center" />
+                <Group justify="center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => {
+                      notifications.show({ title: 'Ошибка', message: 'Ошибка Google Sign-In', color: 'red' });
+                    }}
+                    size="large"
+                    width={352}
+                    text="signin_with"
+                  />
+                </Group>
+              </>
+            )}
           </>
         ) : (
           <>
