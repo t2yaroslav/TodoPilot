@@ -29,7 +29,7 @@ export function LoginForm() {
   };
 
   const handleVerify = async () => {
-    if (code.length !== 6) return;
+    if (code.length !== 4) return;
     setLoading(true);
     try {
       const { data } = await verifyCode(email, code);
@@ -67,7 +67,7 @@ export function LoginForm() {
         ) : (
           <>
             <Group justify="center">
-              <PinInput length={6} value={code} onChange={setCode} type="number" size="md" />
+              <PinInput length={4} value={code} onChange={setCode} type="number" size="md" />
             </Group>
             <Button onClick={handleVerify} loading={loading} fullWidth>
               Войти

@@ -39,7 +39,7 @@ async def get_current_user(
 
 @router.post("/send-code")
 async def send_code(body: AuthRequest, db: AsyncSession = Depends(get_db)):
-    code = "".join(random.choices(string.digits, k=6))
+    code = "".join(random.choices(string.digits, k=4))
     expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     db.add(AuthCode(email=body.email, code=code, expires_at=expires))
     await db.commit()
