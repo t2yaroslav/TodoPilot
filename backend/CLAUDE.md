@@ -4,10 +4,13 @@
 Python 3.12, FastAPI, SQLAlchemy 2 (async + asyncpg), Alembic, Pydantic Settings, LiteLLM, python-jose (JWT), aiosmtplib
 
 ## Entry Point
-`app/main.py` - CORS setup, lifespan (db tables creation), error handlers, router registration.
+`app/main.py` - CORS setup, lifespan (db tables creation), error handlers, request logging middleware, router registration.
 
 ## Config
-`app/config.py` - Pydantic Settings. Env vars: DATABASE_URL, JWT_SECRET/ALGORITHM/EXPIRE_MINUTES, SMTP_*, LLM_MODEL/API_KEY/API_BASE.
+`app/config.py` - Pydantic Settings. Env vars: DATABASE_URL, JWT_SECRET/ALGORITHM/EXPIRE_MINUTES, SMTP_*, LLM_MODEL/API_KEY/API_BASE, LOG_LEVEL, LOG_FORMAT.
+
+## Logging
+`app/logging_config.py` - Centralized structured JSON logging. `setup_logging(level, fmt)` called once at startup. Supports JSON (default) and text format. All loggers under `todopilot.*` namespace inherit the formatter.
 
 ## DB Models (`app/models.py`)
 - `User`: id, email, name, profile_text (AI psychoportrait), settings (JSONB), created_at
@@ -25,6 +28,7 @@ Python 3.12, FastAPI, SQLAlchemy 2 (async + asyncpg), Alembic, Pydantic Settings
 | `goals.py` | `/goals` | CRUD |
 | `stats.py` | `/stats` | GET /productivity?days=N |
 | `ai.py` | `/ai` | POST /chat, GET /productivity-analysis, GET /retrospective, POST /onboarding |
+| `logs.py` | `/logs` | POST /logs (frontend log collector, JWT required, rate limited) |
 
 ## AI Service (`app/services/ai_service.py`)
 LiteLLM wrapper. Functions: `chat()`, `analyze_productivity()`, `weekly_retrospective()`, `onboarding_chat()`. Uses `drop_params=True` for cross-provider compatibility. System prompts in Russian.

@@ -4,7 +4,7 @@
 React 18, Vite 6, TypeScript 5, Mantine UI v7, Zustand 5, React Router v6, Recharts, Axios, dayjs, Tabler Icons
 
 ## Entry Point
-`src/main.tsx` - MantineProvider, DatesProvider (locale: ru), Notifications. `src/App.tsx` - Router with protected routes + AppLayout wrapper.
+`src/main.tsx` - MantineProvider, DatesProvider (locale: ru), Notifications, global error handlers (window.onerror, onunhandledrejection). `src/App.tsx` - Router with protected routes + AppLayout wrapper.
 
 ## API Client (`src/api/client.ts`)
 Axios instance with JWT Bearer interceptor. Exports all API functions: `sendCode`, `verifyCode`, `getMe`, `updateMe`, task/project/goal CRUD, stats, AI endpoints. Error handler formats dev errors with DB info.
@@ -26,6 +26,7 @@ LoginPage, TodayPage, InboxPage, UpcomingPage, CompletedPage, ProjectPage, Setti
 ## Utilities (`src/lib/`)
 - `dates.ts` - date formatting, relative date labels
 - `theme.ts` - Mantine theme config
+- `logger.ts` - structured logger, batches entries and sends to `POST /api/logs`. Methods: `logger.debug()`, `.info()`, `.warn()`, `.error()`. Errors flush immediately, others batch every 5s or 10 entries. Uses `navigator.sendBeacon` on page unload
 
 ## Build
 - Dev: `npm run dev` (Vite dev server)
