@@ -1,10 +1,11 @@
 """AI service using LiteLLM for multi-provider support.
 
-Switch provider by changing LLM_MODEL env var:
+Switch provider by changing LLM_MODEL env var (global default)
+or per-user via user.settings["ai_provider"] config:
   - OpenAI:   gpt-4o-mini, gpt-4o
-  - Claude:   claude-sonnet-4-20250514
+  - Claude:   claude-sonnet-4-20250514, claude-haiku-4-20250414
+  - Ollama:   ollama/llama3 (+ set api_base)
   - Deepseek: deepseek/deepseek-chat
-  - Local:    ollama/llama3 (+ set LLM_API_BASE)
 """
 
 import litellm
@@ -17,6 +18,46 @@ if settings.llm_debug:
     from .llm_logger import LLMDebugLogger
 
     litellm.callbacks = [LLMDebugLogger()]
+
+
+# Preset provider configs for the UI dropdown
+AI_PROVIDERS = {
+    "openai": {
+        "label": "OpenAI (ChatGPT)",
+        "models": ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1-nano"],
+        "requires_api_key": True,
+        "requires_api_base": False,
+    },
+    "anthropic": {
+        "label": "Anthropic (Claude)",
+        "models": ["claude-sonnet-4-20250514", "claude-haiku-4-20250414"],
+        "requires_api_key": True,
+        "requires_api_base": False,
+    },
+    "ollama": {
+        "label": "Ollama (локальный)",
+        "models": [],
+        "requires_api_key": False,
+        "requires_api_base": True,
+        "default_api_base": "http://localhost:11434",
+    },
+}
+
+
+def get_llm_kwargs(user_settings: dict | None = None) -> dict:
+    """Build LiteLLM kwargs from user settings or fall back to global config."""
+    ai = (user_settings or {}).get("ai_provider_config", {})
+
+    model = ai.get("model") or settings.llm_model
+    api_key = ai.get("api_key") or settings.llm_api_key
+    api_base = ai.get("api_base") or settings.llm_api_base
+
+    kwargs: dict = {"model": model}
+    if api_key:
+        kwargs["api_key"] = api_key
+    if api_base:
+        kwargs["api_base"] = api_base
+    return kwargs
 
 SYSTEM_PROMPT = """Ты - AI-помощник в приложении TodoPilot для управления задачами.
 Твоя роль: помогать пользователю с продуктивностью, мотивацией и целеполаганием.
@@ -35,6 +76,7 @@ async def chat(
     messages: list[dict],
     user_profile: str | None = None,
     tasks_context: str | None = None,
+    user_settings: dict | None = None,
 ) -> str:
     system = SYSTEM_PROMPT
     if user_profile:
@@ -44,15 +86,9 @@ async def chat(
 
     full_messages = [{"role": "system", "content": system}] + messages
 
-    kwargs: dict = {
-        "model": settings.llm_model,
-        "messages": full_messages,
-        "max_tokens": 1024,
-    }
-    if settings.llm_api_key:
-        kwargs["api_key"] = settings.llm_api_key
-    if settings.llm_api_base:
-        kwargs["api_base"] = settings.llm_api_base
+    kwargs = get_llm_kwargs(user_settings)
+    kwargs["messages"] = full_messages
+    kwargs["max_tokens"] = 1024
 
     response = await litellm.acompletion(**kwargs)
     content = response.choices[0].message.content or ""
@@ -91,6 +127,7 @@ async def chat(
 async def analyze_productivity(
     completed_tasks: list[dict],
     user_profile: str | None = None,
+    user_settings: dict | None = None,
 ) -> str:
     tasks_text = "\n".join(
         f"- {t['title']} (завершена: {t.get('completed_at', 'N/A')})" for t in completed_tasks
@@ -104,13 +141,14 @@ async def analyze_productivity(
             ),
         }
     ]
-    return await chat(messages, user_profile=user_profile)
+    return await chat(messages, user_profile=user_profile, user_settings=user_settings)
 
 
 async def weekly_retrospective(
     week_tasks: list[dict],
     goals: list[dict],
     user_profile: str | None = None,
+    user_settings: dict | None = None,
 ) -> dict:
     tasks_text = "\n".join(
         f"- {'[x]' if t.get('completed') else '[ ]'} {t['title']}" for t in week_tasks
@@ -129,7 +167,7 @@ async def weekly_retrospective(
             ),
         }
     ]
-    result = await chat(messages, user_profile=user_profile)
+    result = await chat(messages, user_profile=user_profile, user_settings=user_settings)
     import json
 
     try:
@@ -145,6 +183,7 @@ async def generate_survey_step(
     user_profile: str | None = None,
     previous_answers: dict | None = None,
     previous_retrospective: dict | None = None,
+    user_settings: dict | None = None,
 ) -> list[str]:
     """Generate AI suggestions for survey wizard steps 1, 3, 4.
     Step 2 (difficulties) is filled manually by the user.
@@ -238,7 +277,7 @@ async def generate_survey_step(
         )
 
     messages = [{"role": "user", "content": prompt}]
-    result = await chat(messages, user_profile=user_profile)
+    result = await chat(messages, user_profile=user_profile, user_settings=user_settings)
 
     try:
         parsed = json.loads(result)
@@ -260,6 +299,7 @@ async def generate_survey_step(
 async def update_psychoportrait(
     current_profile: str | None,
     survey_data: dict,
+    user_settings: dict | None = None,
 ) -> str:
     """Update user psychoportrait based on completed survey answers."""
     import json
@@ -353,10 +393,10 @@ async def update_psychoportrait(
         }
     ]
 
-    return await chat(messages)
+    return await chat(messages, user_settings=user_settings)
 
 
-async def coaching_analysis(stats: dict, user_profile: str | None = None) -> str:
+async def coaching_analysis(stats: dict, user_profile: str | None = None, user_settings: dict | None = None) -> str:
     """Analyze user statistics and provide coaching suggestions."""
     stats_text = (
         f"Статистика пользователя:\n"
@@ -401,10 +441,10 @@ async def coaching_analysis(stats: dict, user_profile: str | None = None) -> str
             ),
         }
     ]
-    return await chat(messages, user_profile=user_profile)
+    return await chat(messages, user_profile=user_profile, user_settings=user_settings)
 
 
-async def brain_dump_extract(text: str, user_profile: str | None = None) -> str:
+async def brain_dump_extract(text: str, user_profile: str | None = None, user_settings: dict | None = None) -> str:
     """Extract tasks, projects, goals from brain dump text."""
     messages = [
         {
@@ -425,7 +465,7 @@ async def brain_dump_extract(text: str, user_profile: str | None = None) -> str:
             ),
         }
     ]
-    return await chat(messages, user_profile=user_profile)
+    return await chat(messages, user_profile=user_profile, user_settings=user_settings)
 
 
 async def morning_plan(
@@ -434,6 +474,7 @@ async def morning_plan(
     goals: list[dict],
     stats: dict,
     user_profile: str | None = None,
+    user_settings: dict | None = None,
 ) -> str:
     """Generate a morning plan suggestion."""
     today_text = "\n".join(
@@ -466,7 +507,7 @@ async def morning_plan(
             ),
         }
     ]
-    return await chat(messages, user_profile=user_profile)
+    return await chat(messages, user_profile=user_profile, user_settings=user_settings)
 
 
 async def chat_with_actions(
@@ -474,6 +515,7 @@ async def chat_with_actions(
     tasks_context: str | None = None,
     projects_context: str | None = None,
     user_profile: str | None = None,
+    user_settings: dict | None = None,
 ) -> str:
     """Chat that can suggest task actions (create/complete/move)."""
     action_system = SYSTEM_PROMPT + """
@@ -503,21 +545,15 @@ async def chat_with_actions(
 
     full_messages = [{"role": "system", "content": system}] + messages
 
-    kwargs: dict = {
-        "model": settings.llm_model,
-        "messages": full_messages,
-        "max_tokens": 1500,
-    }
-    if settings.llm_api_key:
-        kwargs["api_key"] = settings.llm_api_key
-    if settings.llm_api_base:
-        kwargs["api_base"] = settings.llm_api_base
+    kwargs = get_llm_kwargs(user_settings)
+    kwargs["messages"] = full_messages
+    kwargs["max_tokens"] = 1500
 
     response = await litellm.acompletion(**kwargs)
     return response.choices[0].message.content
 
 
-async def onboarding_chat(message: str, history: list[dict]) -> str:
+async def onboarding_chat(message: str, history: list[dict], user_settings: dict | None = None) -> str:
     messages = history + [{"role": "user", "content": message}]
     system_override = (
         "Ты помогаешь новому пользователю настроить приложение TodoPilot. "
@@ -527,11 +563,9 @@ async def onboarding_chat(message: str, history: list[dict]) -> str:
     )
     full_messages = [{"role": "system", "content": system_override}] + messages
 
-    kwargs: dict = {"model": settings.llm_model, "messages": full_messages, "max_tokens": 1024}
-    if settings.llm_api_key:
-        kwargs["api_key"] = settings.llm_api_key
-    if settings.llm_api_base:
-        kwargs["api_base"] = settings.llm_api_base
+    kwargs = get_llm_kwargs(user_settings)
+    kwargs["messages"] = full_messages
+    kwargs["max_tokens"] = 1024
 
     response = await litellm.acompletion(**kwargs)
     return response.choices[0].message.content

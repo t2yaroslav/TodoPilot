@@ -246,6 +246,7 @@ async def generate_suggestions(
             user_profile=user.profile_text,
             previous_answers=previous_answers if previous_answers else None,
             previous_retrospective=previous_retrospective,
+            user_settings=user.settings,
         ),
         operation_type=op_type,
     )
@@ -284,6 +285,7 @@ async def update_profile_from_survey(
     """Update psychoportrait based on survey answers. Called in the background."""
     user_id = user.id
     current_profile = user.profile_text
+    u_settings = user.settings
     survey_data = {
         "goal_outcomes": [o.model_dump() for o in body.goal_outcomes],
         "achievements": body.achievements,
@@ -297,6 +299,7 @@ async def update_profile_from_survey(
         new_profile = await ai_service.update_psychoportrait(
             current_profile=current_profile,
             survey_data=survey_data,
+            user_settings=u_settings,
         )
         if new_profile:
             async with async_session() as session:
