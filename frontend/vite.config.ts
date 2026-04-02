@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+const hotReload = process.env.HOT_RELOAD !== 'false';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -11,10 +13,10 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    watch: {
-      usePolling: true,
-      interval: 1000,
-    },
+    hmr: hotReload,
+    watch: hotReload
+      ? { usePolling: true, interval: Number(process.env.HOT_RELOAD_INTERVAL) || 1000 }
+      : { usePolling: false, ignored: ['**/*'] },
     proxy: {
       '/api': {
         target: process.env.API_PROXY_TARGET || 'http://localhost:8000',

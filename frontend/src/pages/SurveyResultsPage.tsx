@@ -80,7 +80,7 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
       </Accordion.Control>
       <Accordion.Panel>
         <Stack gap="md">
-          {survey.goal_outcomes?.filter((o) => o.goal?.trim()).length > 0 && (
+          {(survey.goal_outcomes?.filter((o) => o.goal?.trim()).length ?? 0) > 0 && (
             <Paper p="sm" withBorder radius="md">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" color="violet" variant="light">
@@ -91,7 +91,7 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
                 </Text>
               </Group>
               <Stack gap={0}>
-                {survey.goal_outcomes.map((outcome, i) => (
+                {survey.goal_outcomes!.map((outcome, i) => (
                   <GoalOutcomeItem
                     key={i}
                     outcome={outcome}
@@ -102,7 +102,7 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
             </Paper>
           )}
 
-          {survey.achievements?.filter((s) => s.trim()).length > 0 && (
+          {(survey.achievements?.filter((s) => s.trim()).length ?? 0) > 0 && (
             <Paper p="sm" withBorder radius="md">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" color="green" variant="light">
@@ -113,14 +113,14 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
                 </Text>
               </Group>
               <List size="sm" spacing="xs">
-                {survey.achievements.filter((s) => s.trim()).map((item, i) => (
+                {survey.achievements!.filter((s) => s.trim()).map((item, i) => (
                   <List.Item key={i}>{item}</List.Item>
                 ))}
               </List>
             </Paper>
           )}
 
-          {survey.difficulties?.filter((s) => s.trim()).length > 0 && (
+          {(survey.difficulties?.filter((s) => s.trim()).length ?? 0) > 0 && (
             <Paper p="sm" withBorder radius="md">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" color="orange" variant="light">
@@ -131,14 +131,14 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
                 </Text>
               </Group>
               <List size="sm" spacing="xs">
-                {survey.difficulties.filter((s) => s.trim()).map((item, i) => (
+                {survey.difficulties!.filter((s) => s.trim()).map((item, i) => (
                   <List.Item key={i}>{item}</List.Item>
                 ))}
               </List>
             </Paper>
           )}
 
-          {survey.improvements?.filter((s) => s.trim()).length > 0 && (
+          {(survey.improvements?.filter((s) => s.trim()).length ?? 0) > 0 && (
             <Paper p="sm" withBorder radius="md">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" color="blue" variant="light">
@@ -149,14 +149,14 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
                 </Text>
               </Group>
               <List size="sm" spacing="xs">
-                {survey.improvements.filter((s) => s.trim()).map((item, i) => (
+                {survey.improvements!.filter((s) => s.trim()).map((item, i) => (
                   <List.Item key={i}>{item}</List.Item>
                 ))}
               </List>
             </Paper>
           )}
 
-          {survey.weekly_goals?.filter((s) => s.trim()).length > 0 && (
+          {(survey.weekly_goals?.filter((s) => s.trim()).length ?? 0) > 0 && (
             <Paper p="sm" withBorder radius="md">
               <Group gap="xs" mb="xs">
                 <ThemeIcon size="sm" color="indigo" variant="light">
@@ -167,7 +167,7 @@ function SurveyCard({ survey }: { survey: SurveyResult }) {
                 </Text>
               </Group>
               <List size="sm" spacing="xs">
-                {survey.weekly_goals.filter((s) => s.trim()).map((item, i) => (
+                {survey.weekly_goals!.filter((s) => s.trim()).map((item, i) => (
                   <List.Item key={i}>{item}</List.Item>
                 ))}
               </List>
