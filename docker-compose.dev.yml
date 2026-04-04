@@ -16,18 +16,16 @@ services:
       - "8000:8000"
 
   frontend:
-    build: !reset null
     image: node:20
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    env_file: .env
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
       - "3000:3000"
     environment:
-      VITE_API_URL: http://localhost:8000
-      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
       API_PROXY_TARGET: http://backend:8000
       HOT_RELOAD: ${HOT_RELOAD:-true}
       HOT_RELOAD_INTERVAL: ${HOT_RELOAD_INTERVAL:-1000}
