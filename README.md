@@ -167,6 +167,5 @@ TodoPilot/
 │       ├── pages/            # Login, Today, Inbox, Upcoming, Completed, Project, Settings
 │       ├── components/       # layout/, tasks/, ai/, stats/, auth/
 │       └── lib/              # dates.ts, theme.ts
-└── nginx/
-    └── nginx.conf            # Reverse proxy (/ → frontend, /api → backend)
+└── docker-compose.yml        # Nginx config embedded inline (configs: block)
 ```
