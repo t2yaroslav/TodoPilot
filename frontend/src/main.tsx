@@ -34,13 +34,17 @@ window.onunhandledrejection = (event) => {
   });
 };
 
+const appTree = (
+  <MantineProvider theme={theme} defaultColorScheme="light">
+    <DatesProvider settings={{ locale: 'ru' }}>
+      <Notifications position="top-right" />
+      <App />
+    </DatesProvider>
+  </MantineProvider>
+);
+
 createRoot(document.getElementById('root')!).render(
-  <GoogleOAuthProvider clientId={googleClientId}>
-    <MantineProvider theme={theme} defaultColorScheme="light">
-      <DatesProvider settings={{ locale: 'ru' }}>
-        <Notifications position="top-right" />
-        <App />
-      </DatesProvider>
-    </MantineProvider>
-  </GoogleOAuthProvider>
+  googleClientId
+    ? <GoogleOAuthProvider clientId={googleClientId}>{appTree}</GoogleOAuthProvider>
+    : appTree
 );

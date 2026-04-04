@@ -6,6 +6,45 @@ import { IconBrandGoogle } from '@tabler/icons-react';
 import { sendCode, verifyCode, googleAuth } from '@/api/client';
 import { useAuthStore } from '@/stores/authStore';
 
+function GoogleLoginButton({ loading, setLoading, setToken }: {
+  loading: boolean;
+  setLoading: (v: boolean) => void;
+  setToken: (t: string) => void;
+}) {
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      try {
+        const { data } = await googleAuth(tokenResponse.access_token);
+        setToken(data.access_token);
+        window.location.href = '/today';
+      } catch {
+        notifications.show({ title: 'Ошибка', message: 'Не удалось войти через Google', color: 'red' });
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      notifications.show({ title: 'Ошибка', message: 'Ошибка Google Sign-In', color: 'red' });
+    },
+  });
+
+  return (
+    <>
+      <Divider label="или" labelPosition="center" />
+      <Button
+        variant="default"
+        leftSection={<IconBrandGoogle size={18} />}
+        onClick={() => googleLogin()}
+        loading={loading}
+        fullWidth
+      >
+        Войти через Google
+      </Button>
+    </>
+  );
+}
+
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [step, setStep] = useState<'email' | 'code'>('email');
@@ -45,24 +84,6 @@ export function LoginForm() {
     }
   };
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setLoading(true);
-      try {
-        const { data } = await googleAuth(tokenResponse.access_token);
-        setToken(data.access_token);
-        window.location.href = '/today';
-      } catch {
-        notifications.show({ title: 'Ошибка', message: 'Не удалось войти через Google', color: 'red' });
-      } finally {
-        setLoading(false);
-      }
-    },
-    onError: () => {
-      notifications.show({ title: 'Ошибка', message: 'Ошибка Google Sign-In', color: 'red' });
-    },
-  });
-
   return (
     <Paper p="xl" radius="md" withBorder w={400}>
       <Stack>
@@ -86,18 +107,7 @@ export function LoginForm() {
             </Button>
 
             {googleClientId && (
-              <>
-                <Divider label="или" labelPosition="center" />
-                <Button
-                  variant="default"
-                  leftSection={<IconBrandGoogle size={18} />}
-                  onClick={() => googleLogin()}
-                  loading={loading}
-                  fullWidth
-                >
-                  Войти через Google
-                </Button>
-              </>
+              <GoogleLoginButton loading={loading} setLoading={setLoading} setToken={setToken} />
             )}
           </>
         ) : (
