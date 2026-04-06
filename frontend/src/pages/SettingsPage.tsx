@@ -50,9 +50,7 @@ export function SettingsPage() {
       setApiBase(savedApiBase);
 
       // Detect provider from saved model
-      if (savedModel.startsWith('cloudflare/')) {
-        setSelectedProvider('cloudflare');
-      } else if (savedModel.startsWith('ollama/')) {
+      if (savedModel.startsWith('ollama/')) {
         setSelectedProvider('ollama');
       } else if (savedModel.startsWith('claude-')) {
         setSelectedProvider('anthropic');

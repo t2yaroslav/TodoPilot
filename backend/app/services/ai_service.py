@@ -6,7 +6,6 @@ or per-user via user.settings["ai_provider"] config:
   - Claude:   claude-sonnet-4-20250514, claude-haiku-4-20250414
   - Ollama:   ollama/llama3 (+ set api_base)
   - Deepseek: deepseek/deepseek-chat
-  - Cloudflare: cloudflare/{account_id}/@cf/openai/gpt-oss-120b
 """
 
 import litellm
@@ -32,12 +31,6 @@ AI_PROVIDERS = {
     "anthropic": {
         "label": "Anthropic (Claude)",
         "models": ["claude-sonnet-4-20250514", "claude-haiku-4-20250414"],
-        "requires_api_key": True,
-        "requires_api_base": False,
-    },
-    "cloudflare": {
-        "label": "Cloudflare Workers AI",
-        "models": ["cloudflare/6b35a885b7ec3e1f113d55c38837fef6/@cf/openai/gpt-oss-120b"],
         "requires_api_key": True,
         "requires_api_base": False,
     },
