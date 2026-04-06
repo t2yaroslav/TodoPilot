@@ -129,6 +129,20 @@ class OperationTiming(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class AIUsage(Base):
+    """Daily AI request counter per user."""
+    __tablename__ = "ai_usage"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    usage_date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    request_count: Mapped[int] = mapped_column(Integer, default=0)
+
+    __table_args__ = (
+        __import__("sqlalchemy").UniqueConstraint("user_id", "usage_date", name="uq_ai_usage_user_date"),
+    )
+
+
 class Feedback(Base):
     __tablename__ = "feedback"
 

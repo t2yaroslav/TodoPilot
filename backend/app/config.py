@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     admin_email: str = ""  # email of admin user (gets is_admin=True on login)
     vite_google_client_id: str = ""  # Google OAuth Client ID for sign-in (shared with frontend)
     upload_dir: str = "uploads"
+    ai_daily_limit: int = 50  # max AI requests per user per day (0 = unlimited)
+    ai_daily_warn: int = 40   # show warning after this many requests
     log_level: str = "INFO"
     log_format: str = "json"  # "json" or "text"
 

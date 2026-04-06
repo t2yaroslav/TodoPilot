@@ -17,6 +17,7 @@ from ..schemas import (
 )
 from ..services import ai_service
 from ..services import task_queue
+from .ai import _check_ai_usage
 from .auth import get_current_user
 
 router = APIRouter(prefix="/survey", tags=["survey"])
@@ -236,6 +237,9 @@ async def generate_suggestions(
     # Fetch previous retrospective for context
     previous_retrospective = await _get_previous_retrospective(user.id, monday, db)
 
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     # Submit LLM call to background queue (returns immediately)
     op_type = f"survey_generate_step_{body.step}"
     task_id = await task_queue.submit(
@@ -250,7 +254,7 @@ async def generate_suggestions(
         ),
         operation_type=op_type,
     )
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.post("/submit", response_model=SurveyOut)
@@ -294,6 +298,9 @@ async def update_profile_from_survey(
         "weekly_goals": body.weekly_goals,
     }
 
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     async def _run():
         from ..database import async_session
         new_profile = await ai_service.update_psychoportrait(
@@ -310,7 +317,7 @@ async def update_profile_from_survey(
         return {"ok": True}
 
     task_id = await task_queue.submit(_run())
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.get("/results", response_model=list[SurveyOut])

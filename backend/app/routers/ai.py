@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func, cast, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..database import get_db
-from ..models import Goal, Project, Task, User
+from ..models import AIUsage, Goal, Project, Task, User
 from ..schemas import (
     AIChatMessage,
     AIMessage,
@@ -24,6 +25,48 @@ from .auth import get_current_user
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
+async def _check_ai_usage(db: AsyncSession, user: User) -> dict:
+    """Check and increment daily AI usage. Returns usage info dict.
+
+    Raises HTTPException 429 if limit exceeded (unless user is admin or limit is 0).
+    """
+    limit = settings.ai_daily_limit
+    warn = settings.ai_daily_warn
+    today = date.today()
+
+    # Find or create today's usage record
+    result = await db.execute(
+        select(AIUsage).where(AIUsage.user_id == user.id, AIUsage.usage_date == today)
+    )
+    usage = result.scalar_one_or_none()
+
+    if not usage:
+        usage = AIUsage(user_id=user.id, usage_date=today, request_count=0)
+        db.add(usage)
+        await db.flush()
+
+    current = usage.request_count
+
+    # Enforce limit (0 = unlimited, admins bypass)
+    if limit > 0 and not user.is_admin and current >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "message": f"Достигнут дневной лимит AI-запросов ({limit}). Попробуйте завтра.",
+                "ai_usage": {"used": current, "limit": limit, "remaining": 0, "warning": True},
+            },
+        )
+
+    # Increment
+    usage.request_count = current + 1
+    await db.flush()
+
+    remaining = max(0, limit - current - 1) if limit > 0 else -1  # -1 = unlimited
+    warning = limit > 0 and not user.is_admin and (current + 1) >= warn
+
+    return {"used": current + 1, "limit": limit, "remaining": remaining, "warning": warning}
+
+
 @router.get("/providers")
 async def get_providers():
     """Return available AI providers and their models."""
@@ -33,8 +76,10 @@ async def get_providers():
 @router.post("/test-connection")
 async def test_connection(
     user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Test the user's AI provider connection with a simple prompt."""
+    ai_usage = await _check_ai_usage(db, user)
     user_settings = user.settings or {}
 
     try:
@@ -42,9 +87,11 @@ async def test_connection(
             [{"role": "user", "content": "Ответь одним словом: работает"}],
             user_settings=user_settings,
         )
-        return {"status": "ok", "reply": result}
+        await db.commit()
+        return {"status": "ok", "reply": result, "ai_usage": ai_usage}
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        await db.commit()
+        return {"status": "error", "error": str(e), "ai_usage": ai_usage}
 
 
 async def _gather_stats(user: User, db: AsyncSession) -> dict:
@@ -181,6 +228,9 @@ async def ai_chat(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     # Gather context (fast DB queries)
     result = await db.execute(
         select(Task).where(Task.user_id == user.id, Task.completed == False).limit(50)  # noqa: E712
@@ -194,7 +244,7 @@ async def ai_chat(
     task_id = await task_queue.submit(
         ai_service.chat(messages, user_profile=user.profile_text, tasks_context=tasks_ctx, user_settings=user.settings)
     )
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.post("/analysis")
@@ -203,6 +253,9 @@ async def coaching_analysis(
     db: AsyncSession = Depends(get_db),
 ):
     """Coaching analysis based on comprehensive user statistics."""
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     stats = await _gather_stats(user, db)
 
     async def _run():
@@ -210,7 +263,7 @@ async def coaching_analysis(
         return {"analysis": analysis, "stats": stats}
 
     task_id = await task_queue.submit(_run())
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.post("/brain-dump")
@@ -220,6 +273,9 @@ async def brain_dump(
     db: AsyncSession = Depends(get_db),
 ):
     """Extract tasks, projects, goals from brain dump text."""
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     async def _run():
         raw = await ai_service.brain_dump_extract(body.text, user_profile=user.profile_text, user_settings=user.settings)
         try:
@@ -231,7 +287,7 @@ async def brain_dump(
         return {"reply": reply, "items": items}
 
     task_id = await task_queue.submit(_run())
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.post("/brain-dump/save")
@@ -385,10 +441,13 @@ async def morning_plan(
     stats = {"avg_daily_7d": completed_7d / 7, "overdue_tasks": overdue_tasks}
     profile = user.profile_text
 
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     task_id = await task_queue.submit(
         ai_service.morning_plan(today_tasks, all_tasks, goals_list, stats, user_profile=profile, user_settings=user.settings)
     )
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.post("/smart-chat")
@@ -398,6 +457,9 @@ async def smart_chat(
     db: AsyncSession = Depends(get_db),
 ):
     """AI chat that can create/complete/move tasks via action buttons."""
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     # Gather tasks context with IDs
     result = await db.execute(
         select(Task).where(Task.user_id == user.id, Task.completed == False).limit(50)  # noqa: E712
@@ -435,7 +497,7 @@ async def smart_chat(
             return {"reply": raw, "actions": []}
 
     task_id = await task_queue.submit(_run())
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.post("/smart-chat/execute-action")
@@ -506,6 +568,9 @@ async def productivity_analysis(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     yesterday = datetime.now(timezone.utc) - timedelta(days=1)
     result = await db.execute(
         select(Task).where(
@@ -521,7 +586,7 @@ async def productivity_analysis(
     task_id = await task_queue.submit(
         ai_service.analyze_productivity(tasks, user_profile=profile, user_settings=user.settings)
     )
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.get("/retrospective")
@@ -529,6 +594,9 @@ async def weekly_retrospective(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     result = await db.execute(
         select(Task).where(Task.user_id == user.id, Task.created_at >= week_ago)
@@ -542,13 +610,16 @@ async def weekly_retrospective(
     task_id = await task_queue.submit(
         ai_service.weekly_retrospective(tasks, goals, user_profile=profile, user_settings=user.settings)
     )
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
 
 
 @router.post("/onboarding")
-async def onboarding(body: AIMessage, user: User = Depends(get_current_user)):
+async def onboarding(body: AIMessage, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     history = []
     task_id = await task_queue.submit(
         ai_service.onboarding_chat(body.message, history, user_settings=user.settings)
     )
-    return {"task_id": task_id}
+    return {"task_id": task_id, "ai_usage": ai_usage}
