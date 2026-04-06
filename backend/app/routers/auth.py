@@ -14,6 +14,7 @@ from ..config import settings
 from ..database import get_db
 from ..models import AuthCode, User
 from ..schemas import AuthRequest, AuthVerify, GoogleAuthRequest, TokenResponse, UserOut, UserUpdate
+from ..services.onboarding import create_onboarding_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -84,10 +85,13 @@ async def verify_code(body: AuthVerify, db: AsyncSession = Depends(get_db)):
     # Find or create user
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-    if not user:
+    is_new_user = not user
+    if is_new_user:
         is_admin = bool(settings.admin_email and body.email == settings.admin_email)
         user = User(email=body.email, is_admin=is_admin)
         db.add(user)
+        await db.flush()
+        await create_onboarding_data(db, user.id)
     elif settings.admin_email and body.email == settings.admin_email and not user.is_admin:
         user.is_admin = True
 
@@ -118,11 +122,14 @@ async def google_auth(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db
     # Find or create user
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    if not user:
+    is_new_user = not user
+    if is_new_user:
         name = userinfo.get("name")
         is_admin = bool(settings.admin_email and email == settings.admin_email)
         user = User(email=email, name=name, is_admin=is_admin)
         db.add(user)
+        await db.flush()
+        await create_onboarding_data(db, user.id)
     elif settings.admin_email and email == settings.admin_email and not user.is_admin:
         user.is_admin = True
 
