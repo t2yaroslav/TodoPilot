@@ -67,6 +67,27 @@ async def _check_ai_usage(db: AsyncSession, user: User) -> dict:
     return {"used": current + 1, "limit": limit, "remaining": remaining, "warning": warning}
 
 
+@router.get("/usage")
+async def get_ai_usage(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return current daily AI usage for the authenticated user."""
+    limit = settings.ai_daily_limit
+    warn = settings.ai_daily_warn
+    today = date.today()
+
+    result = await db.execute(
+        select(AIUsage).where(AIUsage.user_id == user.id, AIUsage.usage_date == today)
+    )
+    usage = result.scalar_one_or_none()
+    used = usage.request_count if usage else 0
+    remaining = max(0, limit - used) if limit > 0 else -1
+    warning = limit > 0 and not user.is_admin and used >= warn
+
+    return {"used": used, "limit": limit, "remaining": remaining, "warning": warning}
+
+
 @router.get("/providers")
 async def get_providers():
     """Return available AI providers and their models."""
@@ -369,6 +390,9 @@ async def morning_plan(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate morning plan: which task to start with and why."""
+    ai_usage = await _check_ai_usage(db, user)
+    await db.commit()
+
     today = date.today()
     now = datetime.now(timezone.utc)
 
@@ -440,9 +464,6 @@ async def morning_plan(
 
     stats = {"avg_daily_7d": completed_7d / 7, "overdue_tasks": overdue_tasks}
     profile = user.profile_text
-
-    ai_usage = await _check_ai_usage(db, user)
-    await db.commit()
 
     task_id = await task_queue.submit(
         ai_service.morning_plan(today_tasks, all_tasks, goals_list, stats, user_profile=profile, user_settings=user.settings)
