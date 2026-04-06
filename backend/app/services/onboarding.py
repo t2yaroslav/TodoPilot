@@ -58,7 +58,7 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
         Task(
             user_id=user_id,
             title="Раскидать задачи по неделе",
-            description="Не пытайтесь всё впихнуть в понедельник — распределите по дням.",
+            description="Не пытайтесь всё впихнуть в понедельник - распределите по дням.",
             priority=2,
             due_date=today,
             project_id=project.id,
@@ -78,7 +78,7 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
         Task(
             user_id=user_id,
             title="Удалить этот проект",
-            description="Когда освоитесь — удалите этот проект и создайте свой первый. Удачного планирования!",
+            description="Когда освоитесь - удалите этот проект и создайте свой первый. Удачного планирования!",
             priority=0,
             due_date=tomorrow,
             project_id=project.id,
