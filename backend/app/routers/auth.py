@@ -62,10 +62,12 @@ async def send_code(body: AuthRequest, db: AsyncSession = Depends(get_db)):
                 start_tls=True,
             )
         except Exception:
-            pass  # In dev mode, code is returned below
+            pass
 
-    # In dev mode return code (remove in production)
-    return {"message": "Code sent", "dev_code": code}
+    response = {"message": "Code sent"}
+    if not settings.smtp_user:
+        response["dev_code"] = code
+    return response
 
 
 @router.post("/verify", response_model=TokenResponse)
