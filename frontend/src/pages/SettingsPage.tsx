@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Title, Stack, TextInput, Textarea, Button, Paper, Text, Divider, Group,
-  Select, PasswordInput, Badge, Loader,
+  Select, PasswordInput, Badge, Loader, Switch,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useMantineColorScheme } from '@mantine/core';
@@ -236,11 +236,23 @@ export function SettingsPage() {
 
       <Paper p="md" radius="md" withBorder>
         <Text fw={600} mb="sm">Общие</Text>
-        <Group>
-          <Button variant="light" onClick={() => toggleColorScheme()}>
-            {colorScheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-          </Button>
-        </Group>
+        <Stack gap="sm">
+          <Switch
+            label="Еженедельный обзор"
+            description="Предлагать обзор недели каждый понедельник"
+            checked={((user?.settings as Record<string, unknown>)?.weekly_review_enabled ?? true) as boolean}
+            onChange={async (e) => {
+              const currentSettings = (user?.settings || {}) as Record<string, unknown>;
+              await updateUser({ settings: { ...currentSettings, weekly_review_enabled: e.currentTarget.checked } } as Record<string, unknown>);
+              notifications.show({ title: 'Сохранено', message: e.currentTarget.checked ? 'Обзор недели включён' : 'Обзор недели отключён', color: 'green' });
+            }}
+          />
+          <Group>
+            <Button variant="light" onClick={() => toggleColorScheme()}>
+              {colorScheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+            </Button>
+          </Group>
+        </Stack>
       </Paper>
 
       <Paper p="md" radius="md" withBorder>

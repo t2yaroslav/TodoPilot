@@ -88,13 +88,29 @@ async def survey_status(
     if prev_retro is not None and not prev_goals:
         no_goals_msg = "В предыдущем обзоре не были указаны цели"
 
-    # Only auto-show on Monday
-    if today.weekday() != 0:
+    user_settings = user.settings or {}
+    weekly_review_enabled = user_settings.get("weekly_review_enabled")
+
+    def _not_shown(**extra):
         return SurveyStatusOut(
             should_show=False,
             previous_week_goals=prev_goals or None,
             no_goals_message=no_goals_msg,
+            **extra,
         )
+
+    # User explicitly disabled weekly reviews in settings
+    if weekly_review_enabled is False:
+        return _not_shown()
+
+    # Don't auto-show to users registered less than 7 days ago
+    account_age = datetime.now(timezone.utc) - user.created_at
+    if account_age < timedelta(days=3):
+        return _not_shown()
+
+    # Only auto-show on Monday
+    if today.weekday() != 0:
+        return _not_shown()
 
     # Check if survey already exists for this week
     result = await db.execute(
@@ -113,22 +129,10 @@ async def survey_status(
         )
 
     if survey.completed:
-        return SurveyStatusOut(
-            should_show=False,
-            survey_id=survey.id,
-            already_completed=True,
-            previous_week_goals=prev_goals or None,
-            no_goals_message=no_goals_msg,
-        )
+        return _not_shown(survey_id=survey.id, already_completed=True)
 
     if survey.dismissed:
-        return SurveyStatusOut(
-            should_show=False,
-            survey_id=survey.id,
-            already_dismissed=True,
-            previous_week_goals=prev_goals or None,
-            no_goals_message=no_goals_msg,
-        )
+        return _not_shown(survey_id=survey.id, already_dismissed=True)
 
     # Survey exists but not completed/dismissed - show it with draft data
     return SurveyStatusOut(
@@ -145,10 +149,16 @@ async def dismiss_survey(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Dismiss the weekly survey for this week."""
+    """Dismiss the weekly survey and disable future prompts until re-enabled in settings."""
     monday = _current_week_monday()
     survey = await _get_or_create_survey(user.id, monday, db)
     survey.dismissed = True
+
+    # Persistently disable weekly reviews
+    settings = dict(user.settings or {})
+    settings["weekly_review_enabled"] = False
+    user.settings = settings
+
     await db.commit()
     return {"ok": True}
 
