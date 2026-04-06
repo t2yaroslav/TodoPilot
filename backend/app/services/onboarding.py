@@ -13,6 +13,7 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
 
     today = datetime.now(timezone.utc).replace(hour=20, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
+    yesterday = today - timedelta(days=1)
 
     goal = Goal(
         user_id=user_id,
@@ -37,7 +38,6 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
         Task(
             user_id=user_id,
             title="Создать свою первую задачу",
-            description="Нажмите кнопку «+» или поле ввода внизу, чтобы добавить новую задачу. Попробуйте!",
             priority=3,
             due_date=today,
             project_id=project.id,
@@ -76,9 +76,8 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
         Task(
             user_id=user_id,
             title="Найти лучший трекер задач",
-            description="Спойлер: вы уже нашли ;)",
             priority=4,
-            due_date=today,
+            due_date=yesterday,
             project_id=project.id,
             goal_id=goal.id,
             position=4
