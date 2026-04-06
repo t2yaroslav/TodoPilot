@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -139,7 +139,7 @@ class AIUsage(Base):
     request_count: Mapped[int] = mapped_column(Integer, default=0)
 
     __table_args__ = (
-        __import__("sqlalchemy").UniqueConstraint("user_id", "usage_date", name="uq_ai_usage_user_date"),
+        UniqueConstraint("user_id", "usage_date", name="uq_ai_usage_user_date"),
     )
 
 

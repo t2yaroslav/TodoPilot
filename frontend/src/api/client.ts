@@ -56,6 +56,19 @@ api.interceptors.response.use(
 
     const data = err.response?.data;
     const status = err.response?.status || 'Network Error';
+
+    // Handle AI rate limit (429) with a friendlier message
+    if (err.response?.status === 429 && data?.detail?.ai_usage) {
+      const detail = data.detail;
+      notifications.show({
+        title: 'Лимит AI-запросов исчерпан',
+        message: detail.message || `Достигнут дневной лимит (${detail.ai_usage.limit}). Попробуйте завтра.`,
+        color: 'orange',
+        autoClose: 8000,
+      });
+      return Promise.reject(err);
+    }
+
     const message = data?.error || data?.detail || err.message || 'Неизвестная ошибка';
 
     // Build detailed dev info from all available fields
@@ -98,14 +111,38 @@ export async function pollAITask<T = unknown>(taskId: string, intervalMs = 2000)
 }
 
 /**
+ * AI usage info returned alongside task_id from AI endpoints.
+ */
+export interface AIUsageInfo {
+  used: number;
+  limit: number;
+  remaining: number;
+  warning: boolean;
+}
+
+/**
  * Submit an AI request and poll for the result.
  * Wraps the pattern: POST → get task_id → poll until done.
+ * Shows a warning notification when approaching the daily AI limit.
  */
 export async function submitAndPoll<T = unknown>(
-  requestFn: () => Promise<{ data: { task_id: string } }>,
+  requestFn: () => Promise<{ data: { task_id: string; ai_usage?: AIUsageInfo } }>,
   intervalMs = 2000,
 ): Promise<T> {
   const { data } = await requestFn();
+
+  if (data.ai_usage?.warning) {
+    const { remaining, limit } = data.ai_usage;
+    notifications.show({
+      title: 'AI-запросы заканчиваются',
+      message: remaining > 0
+        ? `Осталось ${remaining} из ${limit} запросов на сегодня.`
+        : `Это был последний AI-запрос на сегодня (лимит: ${limit}).`,
+      color: 'yellow',
+      autoClose: 6000,
+    });
+  }
+
   return pollAITask<T>(data.task_id, intervalMs);
 }
 
@@ -146,8 +183,9 @@ export const getProductivity = (days?: number) => api.get('/stats/productivity',
 export const getDashboardToken = () => api.get('/stats/dashboard-token');
 export const getDashboard = (token: string, days?: number) => api.get(`/stats/dashboard/${token}`, { params: days ? { days } : undefined });
 
-// AI providers
+// AI providers & usage
 export const getAIProviders = () => api.get('/ai/providers');
+export const getAIUsage = () => api.get<AIUsageInfo>('/ai/usage');
 export const testAIConnection = () => api.post('/ai/test-connection');
 
 // AI

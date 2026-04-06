@@ -102,7 +102,7 @@ async def verify_code(body: AuthVerify, db: AsyncSession = Depends(get_db)):
 
 @router.post("/google", response_model=TokenResponse)
 async def google_auth(body: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
-    if not settings.google_client_id:
+    if not settings.vite_google_client_id:
         raise HTTPException(status_code=400, detail="Google auth is not configured")
 
     # Verify access token via Google userinfo API
