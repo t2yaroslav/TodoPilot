@@ -17,7 +17,7 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
 
     goal = Goal(
         user_id=user_id,
-        title="Освоить TodoPilot",
+        title="Взять дела под контроль",
         color="#6366f1",
         goal_type="quarterly",
     )
@@ -26,7 +26,7 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
 
     project = Project(
         user_id=user_id,
-        title="Знакомство",
+        title="Разобрать завалы",
         color="#8b5cf6",
         goal_id=goal.id,
         position=0,
@@ -37,7 +37,8 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
     tasks = [
         Task(
             user_id=user_id,
-            title="Создать свою первую задачу",
+            title="Выгрузить все задачи из головы сюда",
+            description="Можно воспользоваться AI ассистентом - Выгрузка из головы.",
             priority=3,
             due_date=today,
             project_id=project.id,
@@ -46,7 +47,8 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
         ),
         Task(
             user_id=user_id,
-            title="Настроить приоритет и срок выполнения",
+            title="Расставить приоритеты",
+            description="Пройдитесь по списку задач: что горит - приоритет высокий. Остальное - подождет.",
             priority=2,
             due_date=today,
             project_id=project.id,
@@ -55,9 +57,9 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
         ),
         Task(
             user_id=user_id,
-            title="Создать свой проект",
-            description="Проекты помогают группировать задачи. Перейдите в раздел проектов и создайте свой первый проект.",
-            priority=1,
+            title="Раскидать задачи по неделе",
+            description="Не пытайтесь всё впихнуть в понедельник — распределите по дням.",
+            priority=2,
             due_date=today,
             project_id=project.id,
             goal_id=goal.id,
@@ -65,32 +67,23 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
         ),
         Task(
             user_id=user_id,
-            title="Попробовать AI-ассистента",
-            description="Откройте чат с AI - он поможет спланировать задачи, разбить цели на шаги и провести ретроспективу.",
-            priority=1,
-            due_date=today,
+            title="Найти лучший трекер задач",
+            description="Смело нажимайте «Готово»!",
+            priority=4,
+            due_date=yesterday,
             project_id=project.id,
             goal_id=goal.id,
             position=3,
         ),
         Task(
             user_id=user_id,
-            title="Найти лучший трекер задач",
-            priority=4,
-            due_date=yesterday,
-            project_id=project.id,
-            goal_id=goal.id,
-            position=4
-        ),
-        Task(
-            user_id=user_id,
-            title="Удалить этот проект, когда освоитесь",
-            description="Когда разберётесь - смело удаляйте этот проект. Удачного планирования!",
+            title="Удалить этот проект",
+            description="Когда освоитесь — удалите этот проект и создайте свой первый. Удачного планирования!",
             priority=0,
             due_date=tomorrow,
             project_id=project.id,
             goal_id=goal.id,
-            position=5,
+            position=4,
         ),
     ]
     db.add_all(tasks)
