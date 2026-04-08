@@ -361,16 +361,9 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
       {/* Source at top: edge goes UP to parent goal */}
       <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} />
 
-      <Group justify="space-between" mb={4} wrap="nowrap">
-        <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
-          <ThemeIcon variant="light" color={done ? 'gray' : data.color} size="sm" radius="xl">
-            <IconFolder size={14} />
-          </ThemeIcon>
-          <Text size="xs" fw={600} lineClamp={1} style={{ textDecoration: done ? 'line-through' : undefined }} c={done ? 'dimmed' : undefined}>
-            {data.label}
-          </Text>
-        </Group>
-      </Group>
+      <Text size="xs" fw={600} lineClamp={1} mb={4} style={{ textDecoration: done ? 'line-through' : undefined }} c={done ? 'dimmed' : undefined}>
+        {data.label}
+      </Text>
 
       <Text size="xs" c="dimmed">
         {data.completed}/{data.total} задач
