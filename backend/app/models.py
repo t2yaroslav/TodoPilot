@@ -98,6 +98,36 @@ class Task(Base):
     subtasks = relationship("Task", backref="parent_task", remote_side="Task.id", foreign_keys=[parent_task_id])
 
 
+class GoalLink(Base):
+    """Many-to-many link between two goals."""
+    __tablename__ = "goal_links"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    source_goal_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("goals.id", ondelete="CASCADE"), nullable=False)
+    target_goal_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("goals.id", ondelete="CASCADE"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("source_goal_id", "target_goal_id", name="uq_goal_link"),
+    )
+
+
+class ProjectGoalLink(Base):
+    """Many-to-many link between projects and goals."""
+    __tablename__ = "project_goal_links"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    goal_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("goals.id", ondelete="CASCADE"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "goal_id", name="uq_project_goal_link"),
+    )
+
+
 class WeeklySurvey(Base):
     __tablename__ = "weekly_surveys"
 

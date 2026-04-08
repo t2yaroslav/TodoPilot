@@ -67,6 +67,37 @@ class GoalOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# Entity Links
+class LinkCreate(BaseModel):
+    source_type: str  # "goal" or "project"
+    source_id: UUID
+    target_type: str  # "goal" or "project"
+    target_id: UUID
+
+
+class GoalLinkOut(BaseModel):
+    id: UUID
+    source_goal_id: UUID
+    target_goal_id: UUID
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ProjectGoalLinkOut(BaseModel):
+    id: UUID
+    project_id: UUID
+    goal_id: UUID
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LinksOut(BaseModel):
+    goal_links: list[GoalLinkOut]
+    project_goal_links: list[ProjectGoalLinkOut]
+
+
 # Project
 class ProjectCreate(BaseModel):
     title: str

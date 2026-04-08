@@ -105,12 +105,32 @@ export interface GoalStats {
   projects: number;
 }
 
+export interface GoalLink {
+  id: string;
+  source_goal_id: string;
+  target_goal_id: string;
+  created_at: string;
+}
+
+export interface ProjectGoalLink {
+  id: string;
+  project_id: string;
+  goal_id: string;
+  created_at: string;
+}
+
+export interface EntityLinks {
+  goal_links: GoalLink[];
+  project_goal_links: ProjectGoalLink[];
+}
+
 interface TaskStore {
   tasks: Task[];
   projects: Project[];
   goals: Goal[];
   projectTaskCounts: Record<string, number>;
   goalStats: Record<string, GoalStats>;
+  entityLinks: EntityLinks;
   navCounts: NavCounts;
   loading: boolean;
 
@@ -133,6 +153,10 @@ interface TaskStore {
   addGoal: (data: Record<string, unknown>) => Promise<Goal>;
   editGoal: (id: string, data: Record<string, unknown>) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
+
+  fetchEntityLinks: () => Promise<void>;
+  addEntityLink: (data: { source_type: string; source_id: string; target_type: string; target_id: string }) => Promise<void>;
+  removeEntityLink: (id: string) => Promise<void>;
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
@@ -141,6 +165,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   goals: [],
   projectTaskCounts: {},
   goalStats: {},
+  entityLinks: { goal_links: [], project_goal_links: [] },
   navCounts: { today: 0, inbox: 0, completed: 0 },
   loading: false,
 
@@ -245,5 +270,28 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   removeGoal: async (id) => {
     await api.deleteGoal(id);
     set({ goals: get().goals.filter((g) => g.id !== id) });
+  },
+
+  fetchEntityLinks: async () => {
+    const { data } = await api.getLinks();
+    set({ entityLinks: data });
+  },
+
+  addEntityLink: async (linkData) => {
+    await api.createLink(linkData);
+    // Refetch links to get server-generated IDs
+    const { data } = await api.getLinks();
+    set({ entityLinks: data });
+  },
+
+  removeEntityLink: async (id) => {
+    await api.deleteLink(id);
+    const { entityLinks } = get();
+    set({
+      entityLinks: {
+        goal_links: entityLinks.goal_links.filter((l) => l.id !== id),
+        project_goal_links: entityLinks.project_goal_links.filter((l) => l.id !== id),
+      },
+    });
   },
 }));

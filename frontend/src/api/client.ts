@@ -178,6 +178,28 @@ export const createGoal = (data: Record<string, unknown>) => api.post('/goals', 
 export const updateGoal = (id: string, data: Record<string, unknown>) => api.patch(`/goals/${id}`, data);
 export const deleteGoal = (id: string) => api.delete(`/goals/${id}`);
 
+// Entity Links
+export interface GoalLinkData {
+  id: string;
+  source_goal_id: string;
+  target_goal_id: string;
+  created_at: string;
+}
+export interface ProjectGoalLinkData {
+  id: string;
+  project_id: string;
+  goal_id: string;
+  created_at: string;
+}
+export interface LinksData {
+  goal_links: GoalLinkData[];
+  project_goal_links: ProjectGoalLinkData[];
+}
+export const getLinks = () => api.get<LinksData>('/goals/links');
+export const createLink = (data: { source_type: string; source_id: string; target_type: string; target_id: string }) =>
+  api.post('/goals/links', data);
+export const deleteLink = (id: string) => api.delete(`/goals/links/${id}`);
+
 // Stats
 export const getProductivity = (days?: number) => api.get('/stats/productivity', { params: { days } });
 export const getDashboardToken = () => api.get('/stats/dashboard-token');

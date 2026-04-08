@@ -248,7 +248,7 @@ export function SettingsPage() {
             }}
           />
           <Group>
-            <Button variant="light" onClick={() => toggleColorScheme()}>
+            <Button variant="c" onClick={() => toggleColorScheme()}>
               {colorScheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
             </Button>
           </Group>
