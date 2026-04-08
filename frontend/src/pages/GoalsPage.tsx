@@ -361,30 +361,6 @@ function ProjectNodeComponent({ data }: NodeProps<Node<ProjectNodeData>>) {
       {/* Source at top: edge goes UP to parent goal */}
       <Handle type="source" position={Position.Top} style={{ background: done ? 'var(--mantine-color-gray-5)' : data.color, width: 10, height: 10 }} />
 
-      {done && (
-        <ThemeIcon
-          variant="light"
-          color="gray"
-          size="sm"
-          radius="xl"
-          style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
-        >
-          <IconCheck size={12} />
-        </ThemeIcon>
-      )}
-
-      {!done && data.isOrphan && (
-        <ThemeIcon
-          variant="light"
-          color="yellow"
-          size="sm"
-          radius="xl"
-          style={{ position: 'absolute', top: -10, right: -10, zIndex: 10 }}
-        >
-          <IconQuestionMark size={12} />
-        </ThemeIcon>
-      )}
-
       <Group justify="space-between" mb={4} wrap="nowrap">
         <Group gap={6} wrap="nowrap" style={{ overflow: 'hidden', flex: 1 }}>
           <ThemeIcon variant="light" color={done ? 'gray' : data.color} size="sm" radius="xl">
