@@ -17,7 +17,7 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
 
     goal = Goal(
         user_id=user_id,
-        title="Взять дела под контроль",
+        title="Запустил личный таск-трекер",
         color="#6366f1",
         goal_type="quarterly",
     )
@@ -26,7 +26,7 @@ async def create_onboarding_data(db: AsyncSession, user_id: uuid.UUID) -> None:
 
     project = Project(
         user_id=user_id,
-        title="Разобрать завалы",
+        title="Перенести мои задачи",
         color="#8b5cf6",
         goal_id=goal.id,
         position=0,
