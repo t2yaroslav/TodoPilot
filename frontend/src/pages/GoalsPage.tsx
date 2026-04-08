@@ -449,19 +449,22 @@ function DeletableEdge({
   });
 
   return (
-    <>
+    <g
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {/* Invisible wider path for hover detection */}
       <path
         d={edgePath}
         fill="none"
         stroke="transparent"
         strokeWidth={20}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        style={{ pointerEvents: 'stroke' }}
       />
       <BaseEdge
         id={id}
         path={edgePath}
+        interactionWidth={20}
         style={{
           stroke: hovered ? 'var(--mantine-color-red-5)' : 'var(--mantine-color-dimmed)',
           strokeWidth: hovered ? baseWidth + 1 : baseWidth,
@@ -475,6 +478,7 @@ function DeletableEdge({
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               pointerEvents: 'all',
+              zIndex: 1000,
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
@@ -491,7 +495,7 @@ function DeletableEdge({
           </div>
         </EdgeLabelRenderer>
       )}
-    </>
+    </g>
   );
 }
 
@@ -704,14 +708,8 @@ function GoalsGraph() {
 
     const projectCompletionMap = new Map<string, boolean>();
     graphProjects.forEach((proj) => {
-      if (proj.deleted_at) {
-        projectCompletionMap.set(proj.id, true);
-      } else {
-        const projTasks = t.filter((task) => task.project_id === proj.id);
-        const total = projTasks.length;
-        const completed = projTasks.filter((task) => task.completed).length;
-        projectCompletionMap.set(proj.id, total > 0 && completed === total);
-      }
+      // Only mark as completed if soft-deleted (deleted_at is set)
+      projectCompletionMap.set(proj.id, !!proj.deleted_at);
     });
 
     // Filter based on hideCompleted
