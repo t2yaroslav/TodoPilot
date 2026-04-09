@@ -624,6 +624,11 @@ function GoalsGraph() {
       }, 300);
     }
   }, [onNodesChangeBase, setNodes]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createParentId, setCreateParentId] = useState<string | undefined>();
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const reactFlowInstance = useReactFlow();
+  const initialLoadRef = useRef(true);
 
   // Save positions immediately on page unload (debounce may not fire)
   useEffect(() => {
@@ -635,11 +640,6 @@ function GoalsGraph() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [reactFlowInstance]);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createParentId, setCreateParentId] = useState<string | undefined>();
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const reactFlowInstance = useReactFlow();
-  const initialLoadRef = useRef(true);
 
   // Fetch all projects including deleted (for goals graph)
   const fetchAllProjects = useCallback(async () => {
