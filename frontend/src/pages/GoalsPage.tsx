@@ -602,8 +602,16 @@ function GoalsGraph() {
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(() => {
+    try { return localStorage.getItem('goals-hide-completed') === 'true'; } catch { return false; }
+  });
   const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const linksLoadedRef = useRef(false);
+
+  // Persist hideCompleted to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('goals-hide-completed', String(hideCompleted)); } catch { /* ignore */ }
+  }, [hideCompleted]);
 
   // Wrap onNodesChange to debounce-save positions to localStorage
   const onNodesChange = useCallback((changes: Parameters<typeof onNodesChangeBase>[0]) => {
@@ -616,6 +624,17 @@ function GoalsGraph() {
       }, 300);
     }
   }, [onNodesChangeBase, setNodes]);
+
+  // Save positions immediately on page unload (debounce may not fire)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      clearTimeout(saveTimeoutRef.current);
+      const currentNodes = reactFlowInstance.getNodes();
+      if (currentNodes.length > 0) savePositions(currentNodes);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [reactFlowInstance]);
   const [createOpen, setCreateOpen] = useState(false);
   const [createParentId, setCreateParentId] = useState<string | undefined>();
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -635,7 +654,7 @@ function GoalsGraph() {
     fetchProjects();
     fetchAllProjects();
     fetchTasks({});
-    fetchEntityLinks();
+    fetchEntityLinks().then(() => { linksLoadedRef.current = true; });
   }, []);
 
   // Handlers
@@ -857,12 +876,13 @@ function GoalsGraph() {
   }, [computeNodesAndEdges, setNodes, setEdges]);
 
   // Initial layout on first data load (try to restore saved positions)
+  // Wait for entityLinks to load so edges are built correctly
   useEffect(() => {
-    if (initialLoadRef.current && (goals.length > 0 || allProjects.length > 0)) {
+    if (initialLoadRef.current && (goals.length > 0 || allProjects.length > 0) && linksLoadedRef.current) {
       initialLoadRef.current = false;
       applyLayout(true);
     }
-  }, [goals, allProjects, applyLayout]);
+  }, [goals, allProjects, entityLinks, applyLayout]);
 
   // Sync node data when store data or filter changes (without resetting positions)
   useEffect(() => {
