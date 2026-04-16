@@ -600,13 +600,21 @@ function GoalsGraph() {
   } = useTaskStore();
 
   const [nodes, setNodes, onNodesChangeBase] = useNodesState<Node>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [edges, setEdges, onEdgesChangeBase] = useEdgesState<Edge>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const [hideCompleted, setHideCompleted] = useState(() => {
     try { return localStorage.getItem('goals-hide-completed') === 'true'; } catch { return false; }
   });
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const linksLoadedRef = useRef(false);
+  const [linksLoaded, setLinksLoaded] = useState(false);
+
+  // Filter out edge removals from React Flow — edges are managed by server data via syncData.
+  // Without this, pressing Delete/Backspace while the canvas is focused removes edges from
+  // local state while the server links remain, causing edges to "disappear".
+  const onEdgesChange = useCallback((changes: Parameters<typeof onEdgesChangeBase>[0]) => {
+    const filtered = changes.filter((c) => c.type !== 'remove');
+    if (filtered.length > 0) onEdgesChangeBase(filtered);
+  }, [onEdgesChangeBase]);
 
   // Persist hideCompleted to localStorage
   useEffect(() => {
@@ -654,7 +662,7 @@ function GoalsGraph() {
     fetchProjects();
     fetchAllProjects();
     fetchTasks({});
-    fetchEntityLinks().then(() => { linksLoadedRef.current = true; });
+    fetchEntityLinks().then(() => { setLinksLoaded(true); });
   }, []);
 
   // Handlers
@@ -878,11 +886,11 @@ function GoalsGraph() {
   // Initial layout on first data load (try to restore saved positions)
   // Wait for entityLinks to load so edges are built correctly
   useEffect(() => {
-    if (initialLoadRef.current && (goals.length > 0 || allProjects.length > 0) && linksLoadedRef.current) {
+    if (initialLoadRef.current && (goals.length > 0 || allProjects.length > 0) && linksLoaded) {
       initialLoadRef.current = false;
       applyLayout(true);
     }
-  }, [goals, allProjects, entityLinks, applyLayout]);
+  }, [goals, allProjects, linksLoaded, applyLayout]);
 
   // Sync node data when store data or filter changes (without resetting positions)
   useEffect(() => {
