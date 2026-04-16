@@ -145,9 +145,6 @@ export function LandingPage() {
           <Button size="lg" radius="md" onClick={goLogin}>
             {t.hero.cta}
           </Button>
-          <Button size="lg" radius="md" variant="default" onClick={() => scrollTo('features')}>
-            {t.hero.demo}
-          </Button>
         </div>
 
         <div className={s.sectionImage}>

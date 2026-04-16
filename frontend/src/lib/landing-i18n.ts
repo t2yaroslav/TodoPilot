@@ -249,6 +249,5 @@ export function getLandingT(lang: LandingLang): LandingTranslations {
 export function detectLang(): LandingLang {
   const stored = localStorage.getItem('landing-lang');
   if (stored === 'en' || stored === 'ru') return stored;
-  const browserLang = navigator.language.slice(0, 2);
-  return browserLang === 'ru' ? 'ru' : 'en';
+  return 'ru';
 }
