@@ -3,7 +3,7 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
+
   useNodesState,
   useEdgesState,
   Handle,
@@ -1007,14 +1007,6 @@ function GoalsGraph() {
           >
             <Background gap={20} size={1} />
             <Controls />
-            <MiniMap
-              nodeColor={(node) => {
-                const data = node.data as GoalNodeData | ProjectNodeData;
-                return data?.color || '#888';
-              }}
-              maskColor="rgba(0,0,0,0.1)"
-              style={{ borderRadius: 8 }}
-            />
           </ReactFlow>
         </div>
       )}
