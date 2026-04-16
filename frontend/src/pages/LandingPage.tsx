@@ -148,7 +148,7 @@ export function LandingPage() {
         </div>
 
         <div className={s.sectionImage}>
-          <img src="/landing/hero.svg" alt="TodoPilot - вид «Сегодня» со списком задач" />
+          <img src="/landing/hero.png" alt="TodoPilot - «Сегодня» со списком задач" />
         </div>
       </section>
 
@@ -171,7 +171,7 @@ export function LandingPage() {
           </div>
 
           <div className={s.sectionImage}>
-            <img src="/landing/features.svg" alt="TodoPilot - экран проектов" />
+            <img src="/landing/features.png" alt="TodoPilot - обзор недели" />
           </div>
         </section>
       </div>
@@ -194,7 +194,7 @@ export function LandingPage() {
         </div>
 
         <div className={s.sectionImage}>
-          <img src="/landing/goals.svg" alt="TodoPilot - экран целей с прогресс-барами" />
+          <img src="/landing/goals.png" alt="TodoPilot - цели и проекты" />
         </div>
       </section>
 
@@ -218,7 +218,7 @@ export function LandingPage() {
             </div>
 
             <div className={s.sectionImageSmall}>
-              <img src="/landing/ai-chat.svg" alt="TodoPilot - AI-чат с рекомендациями" />
+              <img src="/landing/ai-chat.png" alt="TodoPilot - AI-чат" />
             </div>
           </div>
         </section>
