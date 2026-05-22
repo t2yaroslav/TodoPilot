@@ -8,5 +8,14 @@ export const theme = createTheme({
     Button: { defaultProps: { size: 'sm' } },
     TextInput: { defaultProps: { size: 'sm' } },
     Modal: { defaultProps: { centered: true } },
+    Input: {
+      styles: {
+        input: {
+          '@media (max-width: 768px)': {
+            fontSize: '16px',
+          },
+        },
+      },
+    },
   },
 });
