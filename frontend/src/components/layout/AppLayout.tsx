@@ -294,6 +294,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 variant="light"
                 c="dimmed"
               />
+              <Text size="10px" c="dimmed" ta="center" py={4} style={{ opacity: 0.5 }}>
+                v{__APP_VERSION__}
+              </Text>
             </AppShell.Section>
           </AppShell.Navbar>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { TextInput, Select, Group, Button, Box } from '@mantine/core';
+import { TextInput, Select, Group, Button, Box, Stack } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconCalendar, IconHash } from '@tabler/icons-react';
 import { useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
@@ -78,12 +79,15 @@ export function InlineAddTask({
     if (e.key === 'Escape') onClose();
   };
 
+  const isMobile = useMediaQuery('(max-width: 768px)');
   const selectedProject = projectId ? projects.find((p) => p.id === projectId) : null;
 
   const projectData = projects.map((p) => ({
     value: p.id,
     label: p.title,
   }));
+
+  const inputSize = isMobile ? 'sm' : 'xs';
 
   return (
     <Box>
@@ -94,59 +98,113 @@ export function InlineAddTask({
         onKeyDown={handleKeyDown}
         autoFocus
         mb="xs"
-        size="xs"
+        size={inputSize}
       />
-      <Group gap="xs" wrap="nowrap">
-        <Select
-          size="xs"
-          value={priority}
-          onChange={(v) => setPriority(v || '0')}
-          data={PRIORITY_OPTIONS}
-          w={160}
-        />
-        <DatePickerMenu
-          value={dueDate}
-          onChange={setDueDate}
-          recurrence={recurrence}
-          onRecurrenceChange={setRecurrence}
-        >
-          <Button
-            size="xs"
-            variant="default"
-            leftSection={<IconCalendar size={14} />}
+      {isMobile ? (
+        <Stack gap="xs">
+          <Select
+            size={inputSize}
+            value={priority}
+            onChange={(v) => setPriority(v || '0')}
+            data={PRIORITY_OPTIONS}
+          />
+          <DatePickerMenu
+            value={dueDate}
+            onChange={setDueDate}
+            recurrence={recurrence}
+            onRecurrenceChange={setRecurrence}
           >
-            {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
-          </Button>
-        </DatePickerMenu>
-        {projects.length > 0 && (
+            <Button
+              size={inputSize}
+              variant="default"
+              leftSection={<IconCalendar size={16} />}
+              fullWidth
+            >
+              {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
+            </Button>
+          </DatePickerMenu>
+          {projects.length > 0 && (
+            <Select
+              size={inputSize}
+              placeholder="Проект"
+              value={projectId}
+              onChange={setProjectId}
+              data={projectData}
+              clearable
+              leftSection={
+                selectedProject
+                  ? <IconHash size={16} color={selectedProject.color} />
+                  : <IconHash size={16} color="var(--mantine-color-dimmed)" />
+              }
+              renderOption={({ option }) => {
+                const p = projects.find((pr) => pr.id === option.value);
+                return (
+                  <Group gap={6} wrap="nowrap">
+                    <IconHash size={14} color={p?.color} style={{ flexShrink: 0 }} />
+                    <span>{option.label}</span>
+                  </Group>
+                );
+              }}
+            />
+          )}
+          <Group gap="xs" justify="flex-end">
+            <Button size={inputSize} variant="default" onClick={onClose}>Отмена</Button>
+            <Button size={inputSize} onClick={handleAdd}>Добавить задачу</Button>
+          </Group>
+        </Stack>
+      ) : (
+        <Group gap="xs" wrap="nowrap">
           <Select
             size="xs"
-            placeholder="Проект"
-            value={projectId}
-            onChange={setProjectId}
-            data={projectData}
-            clearable
+            value={priority}
+            onChange={(v) => setPriority(v || '0')}
+            data={PRIORITY_OPTIONS}
             w={160}
-            leftSection={
-              selectedProject
-                ? <IconHash size={14} color={selectedProject.color} />
-                : <IconHash size={14} color="var(--mantine-color-dimmed)" />
-            }
-            renderOption={({ option }) => {
-              const p = projects.find((pr) => pr.id === option.value);
-              return (
-                <Group gap={6} wrap="nowrap">
-                  <IconHash size={14} color={p?.color} style={{ flexShrink: 0 }} />
-                  <span>{option.label}</span>
-                </Group>
-              );
-            }}
           />
-        )}
-        <Box style={{ flex: 1 }} />
-        <Button size="xs" variant="default" onClick={onClose}>Отмена</Button>
-        <Button size="xs" onClick={handleAdd}>Добавить задачу</Button>
-      </Group>
+          <DatePickerMenu
+            value={dueDate}
+            onChange={setDueDate}
+            recurrence={recurrence}
+            onRecurrenceChange={setRecurrence}
+          >
+            <Button
+              size="xs"
+              variant="default"
+              leftSection={<IconCalendar size={14} />}
+            >
+              {dueDate ? dayjs(dueDate).format('D MMM') : 'Дата'}
+            </Button>
+          </DatePickerMenu>
+          {projects.length > 0 && (
+            <Select
+              size="xs"
+              placeholder="Проект"
+              value={projectId}
+              onChange={setProjectId}
+              data={projectData}
+              clearable
+              w={160}
+              leftSection={
+                selectedProject
+                  ? <IconHash size={14} color={selectedProject.color} />
+                  : <IconHash size={14} color="var(--mantine-color-dimmed)" />
+              }
+              renderOption={({ option }) => {
+                const p = projects.find((pr) => pr.id === option.value);
+                return (
+                  <Group gap={6} wrap="nowrap">
+                    <IconHash size={14} color={p?.color} style={{ flexShrink: 0 }} />
+                    <span>{option.label}</span>
+                  </Group>
+                );
+              }}
+            />
+          )}
+          <Box style={{ flex: 1 }} />
+          <Button size="xs" variant="default" onClick={onClose}>Отмена</Button>
+          <Button size="xs" onClick={handleAdd}>Добавить задачу</Button>
+        </Group>
+      )}
     </Box>
   );
 }
