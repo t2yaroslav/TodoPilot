@@ -168,13 +168,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <AppShell
-        navbar={{ width: opened ? 280 : 0, breakpoint: 0 }}
+        navbar={{
+          width: 280,
+          breakpoint: 'sm',
+          collapsed: { mobile: !opened, desktop: !opened },
+        }}
         padding="md"
         styles={{
           main: { backgroundColor: colorScheme === 'dark' ? 'var(--mantine-color-dark-8)' : 'var(--mantine-color-gray-0)' },
         }}
       >
-        {opened && (
           <AppShell.Navbar p="xs" style={{ borderRight: '1px solid var(--mantine-color-default-border)' }}>
             <AppShell.Section>
               <Group justify="space-between" mb="xs">
@@ -293,7 +296,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               />
             </AppShell.Section>
           </AppShell.Navbar>
-        )}
 
         <AppShell.Main>
           <Box pos="relative">

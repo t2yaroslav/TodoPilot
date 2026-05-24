@@ -2,6 +2,7 @@ import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/tiptap/styles.css';
+import './ios-fix.css';
 
 import { createRoot } from 'react-dom/client';
 import { MantineProvider } from '@mantine/core';
