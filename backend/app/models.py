@@ -128,6 +128,21 @@ class ProjectGoalLink(Base):
     )
 
 
+class ProjectLink(Base):
+    """Many-to-many link between two projects."""
+    __tablename__ = "project_links"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    source_project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    target_project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("source_project_id", "target_project_id", name="uq_project_link"),
+    )
+
+
 class WeeklySurvey(Base):
     __tablename__ = "weekly_surveys"
 

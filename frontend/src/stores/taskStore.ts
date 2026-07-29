@@ -119,9 +119,17 @@ export interface ProjectGoalLink {
   created_at: string;
 }
 
+export interface ProjectLink {
+  id: string;
+  source_project_id: string;
+  target_project_id: string;
+  created_at: string;
+}
+
 export interface EntityLinks {
   goal_links: GoalLink[];
   project_goal_links: ProjectGoalLink[];
+  project_links: ProjectLink[];
 }
 
 interface TaskStore {
@@ -165,7 +173,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   goals: [],
   projectTaskCounts: {},
   goalStats: {},
-  entityLinks: { goal_links: [], project_goal_links: [] },
+  entityLinks: { goal_links: [], project_goal_links: [], project_links: [] },
   navCounts: { today: 0, inbox: 0, completed: 0 },
   loading: false,
 
@@ -291,6 +299,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       entityLinks: {
         goal_links: entityLinks.goal_links.filter((l) => l.id !== id),
         project_goal_links: entityLinks.project_goal_links.filter((l) => l.id !== id),
+        project_links: entityLinks.project_links.filter((l) => l.id !== id),
       },
     });
   },

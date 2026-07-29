@@ -191,9 +191,16 @@ export interface ProjectGoalLinkData {
   goal_id: string;
   created_at: string;
 }
+export interface ProjectLinkData {
+  id: string;
+  source_project_id: string;
+  target_project_id: string;
+  created_at: string;
+}
 export interface LinksData {
   goal_links: GoalLinkData[];
   project_goal_links: ProjectGoalLinkData[];
+  project_links: ProjectLinkData[];
 }
 export const getLinks = () => api.get<LinksData>('/goals/links');
 export const createLink = (data: { source_type: string; source_id: string; target_type: string; target_id: string }) =>

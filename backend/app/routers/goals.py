@@ -5,7 +5,7 @@ from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..models import Goal, GoalLink, Project, ProjectGoalLink, Task, User
+from ..models import Goal, GoalLink, Project, ProjectGoalLink, ProjectLink, Task, User
 from ..schemas import GoalCreate, GoalOut, GoalUpdate, LinkCreate, LinksOut
 from .auth import get_current_user
 
@@ -70,9 +70,13 @@ async def list_links(user: User = Depends(get_current_user), db: AsyncSession = 
     pgl_result = await db.execute(
         select(ProjectGoalLink).where(ProjectGoalLink.user_id == user.id).order_by(ProjectGoalLink.created_at)
     )
+    pl_result = await db.execute(
+        select(ProjectLink).where(ProjectLink.user_id == user.id).order_by(ProjectLink.created_at)
+    )
     return LinksOut(
         goal_links=gl_result.scalars().all(),
         project_goal_links=pgl_result.scalars().all(),
+        project_links=pl_result.scalars().all(),
     )
 
 
@@ -129,6 +133,30 @@ async def create_link(body: LinkCreate, user: User = Depends(get_current_user), 
         await db.refresh(link)
         return {"id": str(link.id), "type": "project_goal_link"}
 
+    elif body.source_type == "project" and body.target_type == "project":
+        p1 = await db.get(Project, body.source_id)
+        p2 = await db.get(Project, body.target_id)
+        if not p1 or p1.user_id != user.id or not p2 or p2.user_id != user.id:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if body.source_id == body.target_id:
+            raise HTTPException(status_code=400, detail="Cannot link project to itself")
+        existing = await db.execute(
+            select(ProjectLink).where(
+                ProjectLink.user_id == user.id,
+                or_(
+                    and_(ProjectLink.source_project_id == body.source_id, ProjectLink.target_project_id == body.target_id),
+                    and_(ProjectLink.source_project_id == body.target_id, ProjectLink.target_project_id == body.source_id),
+                )
+            )
+        )
+        if existing.scalar():
+            raise HTTPException(status_code=409, detail="Link already exists")
+        link = ProjectLink(user_id=user.id, source_project_id=body.source_id, target_project_id=body.target_id)
+        db.add(link)
+        await db.commit()
+        await db.refresh(link)
+        return {"id": str(link.id), "type": "project_link"}
+
     else:
         raise HTTPException(status_code=400, detail="Unsupported link types")
 
@@ -145,6 +173,13 @@ async def delete_link(link_id: UUID, user: User = Depends(get_current_user), db:
 
     # Try project_goal_links
     link = await db.get(ProjectGoalLink, link_id)
+    if link and link.user_id == user.id:
+        await db.delete(link)
+        await db.commit()
+        return
+
+    # Try project_links
+    link = await db.get(ProjectLink, link_id)
     if link and link.user_id == user.id:
         await db.delete(link)
         await db.commit()

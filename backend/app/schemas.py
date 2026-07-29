@@ -93,9 +93,19 @@ class ProjectGoalLinkOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProjectLinkOut(BaseModel):
+    id: UUID
+    source_project_id: UUID
+    target_project_id: UUID
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class LinksOut(BaseModel):
     goal_links: list[GoalLinkOut]
     project_goal_links: list[ProjectGoalLinkOut]
+    project_links: list[ProjectLinkOut] = []
 
 
 # Project

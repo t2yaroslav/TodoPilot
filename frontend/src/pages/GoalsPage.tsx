@@ -53,7 +53,7 @@ import {
   IconSubtask,
   IconCheck,
 } from '@tabler/icons-react';
-import { useTaskStore, Goal, Project, Task, GoalLink, ProjectGoalLink } from '@/stores/taskStore';
+import { useTaskStore, Goal, Project, Task, GoalLink, ProjectGoalLink, ProjectLink } from '@/stores/taskStore';
 import { getProjects } from '@/api/client';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -693,7 +693,7 @@ function GoalsGraph() {
   const computeNodesAndEdges = useCallback(() => {
     const { goals: g, goalStats: gs, tasks: t, entityLinks: links } = useTaskStore.getState();
     const graphProjects = allProjects;
-    const { goal_links: goalLinks, project_goal_links: projectGoalLinks } = links;
+    const { goal_links: goalLinks, project_goal_links: projectGoalLinks, project_links: projectLinks } = links;
 
     // Precompute completion status for goals and projects
     const goalCompletionMap = new Map<string, boolean>();
@@ -758,6 +758,25 @@ function GoalsGraph() {
       }
     });
 
+    // Project ↔ Project edges (from project_links)
+    (projectLinks || []).forEach((link) => {
+      if (filteredProjectIds.has(link.source_project_id) && filteredProjectIds.has(link.target_project_id)) {
+        const srcTasks = t.filter((task) => task.project_id === link.source_project_id);
+        const tgtTasks = t.filter((task) => task.project_id === link.target_project_id);
+        newEdges.push({
+          id: `pl-${link.id}`,
+          source: `project-${link.source_project_id}`,
+          target: `project-${link.target_project_id}`,
+          type: 'deletable',
+          data: {
+            onDelete: handleEdgeDelete,
+            linkId: link.id,
+            taskCount: srcTasks.length + tgtTasks.length,
+          },
+        });
+      }
+    });
+
     const connectedIds = new Set<string>();
     newEdges.forEach((e) => {
       connectedIds.add(e.source);
@@ -777,6 +796,10 @@ function GoalsGraph() {
     const projectLinkCounts = new Map<string, number>();
     projectGoalLinks.forEach((l) => {
       projectLinkCounts.set(l.project_id, (projectLinkCounts.get(l.project_id) || 0) + 1);
+    });
+    (projectLinks || []).forEach((l) => {
+      projectLinkCounts.set(l.source_project_id, (projectLinkCounts.get(l.source_project_id) || 0) + 1);
+      projectLinkCounts.set(l.target_project_id, (projectLinkCounts.get(l.target_project_id) || 0) + 1);
     });
 
     // Goal nodes
@@ -925,9 +948,6 @@ function GoalsGraph() {
       targetType = 'goal';
       targetId = connection.target;
     }
-
-    // Project ↔ Project is not supported
-    if (sourceType === 'project' && targetType === 'project') return;
 
     await addEntityLink({ source_type: sourceType, source_id: sourceId, target_type: targetType, target_id: targetId });
     await Promise.all([fetchGoals(), fetchProjects(), fetchAllProjects(), fetchGoalStats()]);
