@@ -86,7 +86,7 @@ api.interceptors.response.use(
       title: `Ошибка ${status}${data?.type ? ` (${data.type})` : ''}`,
       message: detail ? `${message}\n\n${detail}` : message,
       color: 'red',
-      autoClose: detail ? false : 5000,
+      autoClose: detail ? 10000 : 5000,
       styles: detail ? { description: { whiteSpace: 'pre-wrap', fontSize: '11px', maxHeight: '400px', overflow: 'auto', fontFamily: 'monospace' } } : undefined,
     });
 
