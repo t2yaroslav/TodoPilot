@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Menu, ActionIcon, Text, Group, Badge, Stack, Loader, ThemeIcon } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {
   IconSparkles,
   IconChartBar,
@@ -30,6 +31,7 @@ export function AIFunctionMenu() {
   const [morningPlanOpen, setMorningPlanOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const openWizard = useSurveyStore((s) => s.openWizard);
+  const alreadyCompleted = useSurveyStore((s) => s.alreadyCompleted);
   const { tasks, hasRunning, hasFinished, dismissTask, clearFinished } = useAITaskStore();
 
   const finishedTasks = tasks.filter((t) => t.status === 'done' || t.status === 'error');
@@ -167,9 +169,23 @@ export function AIFunctionMenu() {
           </Menu.Item>
           <Menu.Item
             leftSection={<IconClipboardList size={16} />}
-            onClick={openWizard}
+            onClick={() => {
+              if (alreadyCompleted) {
+                notifications.show({
+                  title: 'Обзор уже завершён',
+                  message: 'Еженедельный обзор на эту неделю уже выполнен. Результаты доступны в истории.',
+                  color: 'blue',
+                  autoClose: 5000,
+                });
+                return;
+              }
+              openWizard();
+            }}
           >
             Обзор недели
+            {alreadyCompleted && (
+              <IconCheck size={14} style={{ marginLeft: 4, color: 'var(--mantine-color-green-6)' }} />
+            )}
           </Menu.Item>
           <Menu.Divider />
           <Menu.Item

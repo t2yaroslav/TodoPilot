@@ -42,6 +42,7 @@ interface GenerationSnapshot {
 interface SurveyState {
   // Wizard state
   shouldShow: boolean;
+  alreadyCompleted: boolean;
   wizardOpen: boolean;
   currentStep: number; // 1-5: 1=goal outcomes, 2=achievements, 3=difficulties, 4=improvements, 5=weekly goals
   loading: boolean;
@@ -69,7 +70,7 @@ interface SurveyState {
 
   // Actions
   checkStatus: () => Promise<void>;
-  openWizard: () => void;
+  openWizard: (forceReopen?: boolean) => void;
   closeWizard: () => void;
   dismiss: () => Promise<void>;
   generateForStep: (step: number, force?: boolean) => Promise<void>;
@@ -99,6 +100,7 @@ function depsKey(state: SurveyState, step: number): string {
 
 export const useSurveyStore = create<SurveyState>((set, get) => ({
   shouldShow: false,
+  alreadyCompleted: false,
   wizardOpen: false,
   currentStep: 1,
   loading: false,
@@ -153,6 +155,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
       const noGoalsMsg: string | null = data.no_goals_message || null;
       set({
         shouldShow: data.should_show,
+        alreadyCompleted: data.already_completed || false,
         previousWeekGoals: prevGoals,
         goalOutcomes: prevGoals.map((g: string) => ({ goal: g, completed: null })),
         noGoalsMessage: noGoalsMsg,
@@ -162,8 +165,9 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     }
   },
 
-  openWizard: () => {
+  openWizard: (forceReopen = false) => {
     const state = get();
+    if (state.alreadyCompleted && !forceReopen) return;
     const startStep = state.previousWeekGoals.length > 0 ? 1 : 2;
     set({
       wizardOpen: true,
@@ -343,7 +347,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     try {
       await submitSurvey(surveyData);
       // Close wizard immediately
-      set({ loading: false, wizardOpen: false, shouldShow: false });
+      set({ loading: false, wizardOpen: false, shouldShow: false, alreadyCompleted: true });
 
       // Run psychoportrait update in the background (polls until done)
       useAITaskStore.getState().runTask(
