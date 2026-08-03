@@ -61,6 +61,9 @@ interface SurveyState {
   // Generation tracking per step
   genSnapshots: Record<number, GenerationSnapshot>;
 
+  // Items dismissed/deleted by user per step (so AI doesn't re-add them)
+  dismissedItems: Record<number, Set<string>>;
+
   // Results
   results: SurveyResult[];
 
@@ -108,6 +111,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
   improvements: [],
   weeklyGoals: [],
   genSnapshots: {},
+  dismissedItems: {},
   results: [],
 
   checkStatus: async () => {
@@ -160,13 +164,10 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
 
   openWizard: () => {
     const state = get();
-    // If there are previous goals, start at step 1 (goal outcomes)
-    // Otherwise skip to step 2 (achievements)
     const startStep = state.previousWeekGoals.length > 0 ? 1 : 2;
     set({
       wizardOpen: true,
       currentStep: startStep,
-      genSnapshots: {},
     });
   },
 
@@ -211,7 +212,7 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
           goal_outcomes: state.goalOutcomes.length > 0 ? state.goalOutcomes : undefined,
           achievements: step >= 4 ? state.achievements : undefined,
           difficulties: step >= 4 ? state.difficulties : undefined,
-          improvements: step >= 5 ? state.improvements : undefined,
+          improvements: step >= 4 ? state.improvements : undefined,
         }),
       );
 
@@ -227,11 +228,15 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
         return;
       }
 
-      // Prepend AI suggestions to existing user items (deduplicate)
+      // Prepend AI suggestions to existing user items (deduplicate + exclude dismissed)
       const currentState = get();
+      const dismissed = currentState.dismissedItems[step] || new Set<string>();
       const mergeUnique = (aiItems: string[], userItems: string[]) => {
         const existing = new Set(userItems.map(s => s.trim().toLowerCase()));
-        const newItems = aiItems.filter(s => !existing.has(s.trim().toLowerCase()));
+        const newItems = aiItems.filter(s => {
+          const key = s.trim().toLowerCase();
+          return !existing.has(key) && !dismissed.has(key);
+        });
         return [...newItems, ...userItems];
       };
 
@@ -250,6 +255,24 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
   },
 
   setStepData: (step: number, data: string[]) => {
+    const state = get();
+    const getOld = (s: number): string[] => {
+      if (s === 2) return state.achievements;
+      if (s === 3) return state.difficulties;
+      if (s === 4) return state.improvements;
+      if (s === 5) return state.weeklyGoals;
+      return [];
+    };
+    // Track removed items so AI doesn't re-add them
+    const oldItems = getOld(step);
+    const newSet = new Set(data.map(s => s.trim().toLowerCase()));
+    const removed = oldItems.filter(s => !newSet.has(s.trim().toLowerCase()));
+    if (removed.length > 0) {
+      const dismissed = new Set(state.dismissedItems[step] || []);
+      removed.forEach(s => dismissed.add(s.trim().toLowerCase()));
+      set({ dismissedItems: { ...state.dismissedItems, [step]: dismissed } });
+    }
+
     if (step === 2) set({ achievements: data });
     else if (step === 3) set({ difficulties: data });
     else if (step === 4) set({ improvements: data });

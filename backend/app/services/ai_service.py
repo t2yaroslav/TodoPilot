@@ -244,15 +244,24 @@ async def generate_survey_step(
         prev = previous_answers or {}
         achievements = prev.get("achievements", [])
         difficulties = prev.get("difficulties", [])
+        existing_improvements = prev.get("improvements", [])
+        existing_text = ""
+        if existing_improvements:
+            existing_text = (
+                f"\nУже записанные изменения (НЕ повторяй их): "
+                f"{json.dumps(existing_improvements, ensure_ascii=False)}\n"
+            )
         prompt = (
             f"{context}{prev_retro_text}{goal_outcomes_text}\n\n"
             f"Достижения пользователя на этой неделе: {json.dumps(achievements, ensure_ascii=False)}\n"
-            f"Трудности, которые отметил пользователь: {json.dumps(difficulties, ensure_ascii=False)}\n\n"
+            f"Трудности, которые отметил пользователь: {json.dumps(difficulties, ensure_ascii=False)}\n"
+            f"{existing_text}\n"
             "На основе психопортрета пользователя, его достижений, трудностей, итогов по целям прошлой недели, "
             "а также предыдущего обзора недели, предложи ОДНО самое важное и конкретное изменение "
             "в подходе к работе, которое даст наибольший эффект на этой неделе. "
             "Только в крайнем случае предложи 2-3 изменения, и только если они тесно связаны между собой. "
             "Это должно быть практическое изменение в привычках, организации или подходе, а НЕ задача. "
+            "Каждый пункт — максимум одно предложение, кратко и конкретно. "
             "Отвечай на русском языке. "
             "Верни JSON-массив строк (обычно 1 элемент). Только JSON, без markdown."
         )
