@@ -21,17 +21,22 @@ async def get_avg_duration(
     operation_type: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get average duration (ms) for an operation type, based on last 20 runs across all users."""
+    """Get median duration (ms) for an operation type, based on last 20 successful runs."""
     recent = (
         select(OperationTiming.duration_ms)
-        .where(OperationTiming.operation_type == operation_type)
+        .where(
+            OperationTiming.operation_type == operation_type,
+            OperationTiming.duration_ms < 120_000,
+        )
         .order_by(OperationTiming.created_at.desc())
         .limit(20)
         .subquery()
     )
-    result = await db.execute(select(func.avg(recent.c.duration_ms)))
-    avg_ms = result.scalar()
-    return {"avg_duration_ms": int(avg_ms) if avg_ms else None}
+    result = await db.execute(
+        select(func.percentile_cont(0.5).within_group(recent.c.duration_ms))
+    )
+    median_ms = result.scalar()
+    return {"avg_duration_ms": int(median_ms) if median_ms else None}
 
 
 @router.get("/{task_id}")

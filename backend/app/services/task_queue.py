@@ -42,8 +42,8 @@ async def submit(coro: Coroutine, operation_type: str | None = None) -> str:
             _tasks[task_id]["status"] = "error"
             _tasks[task_id]["error"] = str(e)
 
-        # Record timing if operation_type was specified
-        if operation_type:
+        # Record timing only for successful operations
+        if operation_type and _tasks[task_id]["status"] == "done":
             duration_ms = int((datetime.utcnow() - start).total_seconds() * 1000)
             try:
                 await _record_timing(operation_type, duration_ms)
