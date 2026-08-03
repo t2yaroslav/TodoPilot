@@ -74,7 +74,7 @@ const STEPS = [
   {
     step: 4,
     title: 'Что можно изменить на этой неделе? ⤵️',
-    description: 'AI предложит изменения на основе ваших ответов и профиля',
+    description: '',
     dataKey: 'improvements' as const,
     hasAI: true,
     aiHint: 'AI Анализ: предложит изменения в подходе к работе',
