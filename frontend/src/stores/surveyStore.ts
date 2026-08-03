@@ -195,6 +195,14 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     // Skip if already generated with same dependencies and not forced
     if (!force && snapshot?.done && snapshot.deps === currentDeps) return;
 
+    // If step already has user data and deps changed, don't auto-overwrite — user must force
+    if (!force && snapshot?.done) {
+      const hasData = (step === 2 && state.achievements.length > 0)
+        || (step === 4 && state.improvements.length > 0)
+        || (step === 5 && state.weeklyGoals.length > 0);
+      if (hasData) return;
+    }
+
     set({ generating: true });
     try {
       const suggestions = await submitAndPoll<string[]>(
