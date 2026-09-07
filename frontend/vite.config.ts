@@ -2,7 +2,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { execSync } from 'child_process';
-import fs from 'fs';
 
 const hotReload = process.env.HOT_RELOAD !== 'false';
 
@@ -11,9 +10,7 @@ function getAppVersion(): string {
     return process.env.APP_VERSION;
   }
   try {
-    const hash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-    const date = execSync('git log -1 --format=%cd --date=format:%d.%m.%Y', { encoding: 'utf-8' }).trim();
-    return `${date} · ${hash}`;
+    return execSync('git log -1 --format=%cd --date=format:%d.%m.%Y', { encoding: 'utf-8' }).trim();
   } catch {
     const now = new Date();
     const d = now.getDate().toString().padStart(2, '0');
