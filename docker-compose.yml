@@ -33,6 +33,7 @@ services:
       context: ./frontend
       args:
         VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        APP_VERSION: ${APP_VERSION:-}
     restart: unless-stopped
     depends_on:
       - backend

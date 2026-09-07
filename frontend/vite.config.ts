@@ -7,13 +7,18 @@ import fs from 'fs';
 const hotReload = process.env.HOT_RELOAD !== 'false';
 
 function getAppVersion(): string {
-  const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
-  const base = pkg.version || '1.0.0';
+  if (process.env.APP_VERSION) {
+    return process.env.APP_VERSION;
+  }
   try {
-    const commitCount = execSync('git rev-list --count HEAD', { encoding: 'utf-8' }).trim();
-    return `${base}.${commitCount}`;
+    const hash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+    const date = execSync('git log -1 --format=%cd --date=format:%d.%m.%Y', { encoding: 'utf-8' }).trim();
+    return `${date} · ${hash}`;
   } catch {
-    return base;
+    const now = new Date();
+    const d = now.getDate().toString().padStart(2, '0');
+    const m = (now.getMonth() + 1).toString().padStart(2, '0');
+    return `${d}.${m}.${now.getFullYear()}`;
   }
 }
 
