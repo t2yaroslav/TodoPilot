@@ -1,0 +1,23 @@
+.priority {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.row:hover .priority,
+.row:focus-within .priority,
+.priority[data-opened] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .priority {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.priority:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}

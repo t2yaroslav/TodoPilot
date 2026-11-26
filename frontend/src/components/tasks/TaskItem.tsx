@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ActionIcon, Checkbox, Group, Text, Box, Tooltip } from '@mantine/core';
-import { IconTrash, IconEdit, IconCalendar, IconHash, IconRepeat } from '@tabler/icons-react';
+import { ActionIcon, Checkbox, Group, Text, Box, Tooltip, Menu } from '@mantine/core';
+import { IconTrash, IconEdit, IconCalendar, IconHash, IconRepeat, IconFlag, IconCheck } from '@tabler/icons-react';
 import { Task, useTaskStore } from '@/stores/taskStore';
 import { DatePickerMenu } from './DatePickerMenu';
 import { DescriptionRenderer } from './DescriptionRenderer';
 import { toNoonUTC } from '@/lib/dates';
 import { getRecurrenceLabel } from '@/lib/recurrence';
+import classes from './TaskItem.module.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 
@@ -62,6 +63,8 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
   const project = task.project_id ? projects.find((p) => p.id === task.project_id) : null;
   const [hovered, setHovered] = useState(false);
 
+  const [priorityOpened, setPriorityOpened] = useState(false);
+
   const dateColor = task.due_date ? getDateColor(task.due_date) : undefined;
 
   const handleDateChange = (date: Date | null) => {
@@ -80,6 +83,7 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
 
   return (
     <Box
+      className={classes.row}
       py={8}
       px="sm"
       onMouseEnter={() => setHovered(true)}
@@ -124,53 +128,92 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
               <DescriptionRenderer content={task.description} lineClamp={1} size="xs" />
             </Box>
           )}
-          {(task.due_date || task.recurrence || project) && (
-            <Group gap="xs" mt={4} onClick={(e) => e.stopPropagation()}>
-              {task.due_date && (
-                <DatePickerMenu
-                  value={new Date(task.due_date)}
-                  onChange={handleDateChange}
-                  recurrence={task.recurrence}
-                  onRecurrenceChange={handleRecurrenceChange}
+          <Group gap="xs" mt={4} onClick={(e) => e.stopPropagation()}>
+            {task.due_date && (
+              <DatePickerMenu
+                value={new Date(task.due_date)}
+                onChange={handleDateChange}
+                recurrence={task.recurrence}
+                onRecurrenceChange={handleRecurrenceChange}
+              >
+                <Group
+                  gap={4}
+                  wrap="nowrap"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <Group
-                    gap={4}
-                    wrap="nowrap"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <IconCalendar size={12} color={dateColor} />
-                    <Text size="xs" style={{ color: dateColor }}>
-                      {formatRelativeDate(task.due_date)}
-                    </Text>
-                    {task.recurrence && (
-                      <Tooltip label={getRecurrenceLabel(task.recurrence)}>
-                        <Box style={{ display: 'flex', alignItems: 'center' }}>
-                          <IconRepeat size={12} color={dateColor} />
-                        </Box>
-                      </Tooltip>
-                    )}
-                  </Group>
-                </DatePickerMenu>
-              )}
-              {!task.due_date && task.recurrence && (
-                <Tooltip label={getRecurrenceLabel(task.recurrence)}>
-                  <Group gap={4} wrap="nowrap">
-                    <IconRepeat size={12} color="var(--mantine-color-dimmed)" />
-                    <Text size="xs" c="dimmed">
-                      {getRecurrenceLabel(task.recurrence)}
-                    </Text>
-                  </Group>
-                </Tooltip>
-              )}
-              <Box style={{ flex: 1 }} />
-              {project && (
-                <Group gap={4} wrap="nowrap">
-                  <Text size="xs" c="dimmed">{project.title}</Text>
-                  <IconHash size={10} color={project.color} />
+                  <IconCalendar size={12} color={dateColor} />
+                  <Text size="xs" style={{ color: dateColor }}>
+                    {formatRelativeDate(task.due_date)}
+                  </Text>
+                  {task.recurrence && (
+                    <Tooltip label={getRecurrenceLabel(task.recurrence)}>
+                      <Box style={{ display: 'flex', alignItems: 'center' }}>
+                        <IconRepeat size={12} color={dateColor} />
+                      </Box>
+                    </Tooltip>
+                  )}
                 </Group>
-              )}
-            </Group>
-          )}
+              </DatePickerMenu>
+            )}
+            {!task.due_date && task.recurrence && (
+              <Tooltip label={getRecurrenceLabel(task.recurrence)}>
+                <Group gap={4} wrap="nowrap">
+                  <IconRepeat size={12} color="var(--mantine-color-dimmed)" />
+                  <Text size="xs" c="dimmed">
+                    {getRecurrenceLabel(task.recurrence)}
+                  </Text>
+                </Group>
+              </Tooltip>
+            )}
+            <Menu opened={priorityOpened} onChange={setPriorityOpened} withinPortal position="bottom-start" shadow="md">
+              <Menu.Target>
+                <ActionIcon
+                  className={classes.priority}
+                  data-opened={priorityOpened || undefined}
+                  variant="subtle"
+                  size="xs"
+                  color={PRIORITY_COLORS[task.priority] || 'gray'}
+                  aria-label="Изменить приоритет"
+                  title="Изменить приоритет"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <IconFlag size={14} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown onClick={(e) => e.stopPropagation()}>
+                {[
+                  { value: 4, label: 'Важно и срочно' },
+                  { value: 3, label: 'Не важно и срочно' },
+                  { value: 2, label: 'Важно, не срочно' },
+                  { value: 1, label: 'Не важно, не срочно' },
+                  { value: 0, label: 'Без приоритета' },
+                ].map(({ value, label }) => (
+                  <Menu.Item
+                    key={value}
+                    leftSection={<IconFlag size={14} color={PRIORITY_HEX[value]} />}
+                    rightSection={task.priority === value ? <IconCheck size={14} /> : undefined}
+                    onClick={() => {
+                      if (value !== task.priority) {
+                        editTask(task.id, { priority: value }).then(() => {
+                          fetchTasks(filterParams);
+                          refreshAllCounts();
+                        });
+                      }
+                    }}
+                  >
+                    {label}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+            <Box style={{ flex: 1 }} />
+            {project && (
+              <Group gap={4} wrap="nowrap">
+                <Text size="xs" c="dimmed">{project.title}</Text>
+                <IconHash size={10} color={project.color} />
+              </Group>
+            )}
+          </Group>
         </Box>
       </Group>
       {hovered && (
