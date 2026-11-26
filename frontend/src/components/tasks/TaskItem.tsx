@@ -128,32 +128,34 @@ export function TaskItem({ task, onEdit, filterParams }: Props) {
               <DescriptionRenderer content={task.description} lineClamp={1} size="xs" />
             </Box>
           )}
-          <Group gap="xs" mt={4} onClick={(e) => e.stopPropagation()}>
+          <Group gap="xs" mt={4}>
             {task.due_date && (
-              <DatePickerMenu
-                value={new Date(task.due_date)}
-                onChange={handleDateChange}
-                recurrence={task.recurrence}
-                onRecurrenceChange={handleRecurrenceChange}
-              >
-                <Group
-                  gap={4}
-                  wrap="nowrap"
-                  style={{ cursor: 'pointer' }}
+              <Box onClick={(e) => e.stopPropagation()}>
+                <DatePickerMenu
+                  value={new Date(task.due_date)}
+                  onChange={handleDateChange}
+                  recurrence={task.recurrence}
+                  onRecurrenceChange={handleRecurrenceChange}
                 >
-                  <IconCalendar size={12} color={dateColor} />
-                  <Text size="xs" style={{ color: dateColor }}>
-                    {formatRelativeDate(task.due_date)}
-                  </Text>
-                  {task.recurrence && (
-                    <Tooltip label={getRecurrenceLabel(task.recurrence)}>
-                      <Box style={{ display: 'flex', alignItems: 'center' }}>
-                        <IconRepeat size={12} color={dateColor} />
-                      </Box>
-                    </Tooltip>
-                  )}
-                </Group>
-              </DatePickerMenu>
+                  <Group
+                    gap={4}
+                    wrap="nowrap"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <IconCalendar size={12} color={dateColor} />
+                    <Text size="xs" style={{ color: dateColor }}>
+                      {formatRelativeDate(task.due_date)}
+                    </Text>
+                    {task.recurrence && (
+                      <Tooltip label={getRecurrenceLabel(task.recurrence)}>
+                        <Box style={{ display: 'flex', alignItems: 'center' }}>
+                          <IconRepeat size={12} color={dateColor} />
+                        </Box>
+                      </Tooltip>
+                    )}
+                  </Group>
+                </DatePickerMenu>
+              </Box>
             )}
             {!task.due_date && task.recurrence && (
               <Tooltip label={getRecurrenceLabel(task.recurrence)}>
