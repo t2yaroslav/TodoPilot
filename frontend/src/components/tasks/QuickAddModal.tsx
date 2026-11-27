@@ -19,12 +19,12 @@ export function QuickAddModal({ opened, onClose, defaultDueDate, defaultProjectI
       size={isMobile ? '100%' : 700}
       fullScreen={isMobile}
     >
-      <InlineAddTask
+      {opened && <InlineAddTask
         onClose={onClose}
         onAdded={onClose}
         defaultDueDate={defaultDueDate}
         defaultProjectId={defaultProjectId}
-      />
+      />}
     </Modal>
   );
 }
