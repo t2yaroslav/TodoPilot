@@ -286,6 +286,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </AppShell.Section>
 
             <AppShell.Section>
+              <Text size="10px" lh={1} c="dimmed" ta="right" mb={2}>
+                v{__APP_VERSION__}
+              </Text>
               <Divider mb="xs" />
               <NavLink
                 label="Обратная связь"
@@ -294,9 +297,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 variant="light"
                 c="dimmed"
               />
-              <Text size="10px" c="dimmed" ta="center" py={4} style={{ opacity: 0.5 }}>
-                v{__APP_VERSION__}
-              </Text>
             </AppShell.Section>
           </AppShell.Navbar>
 
