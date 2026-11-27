@@ -1,20 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { execSync } from 'child_process';
-import fs from 'fs';
 
 const hotReload = process.env.HOT_RELOAD !== 'false';
 
 function getAppVersion(): string {
-  const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
-  const base = pkg.version || '1.0.0';
-  try {
-    const commitCount = execSync('git rev-list --count HEAD', { encoding: 'utf-8' }).trim();
-    return `${base}.${commitCount}`;
-  } catch {
-    return base;
-  }
+  const buildDate = new Date();
+  const day = String(buildDate.getUTCDate()).padStart(2, '0');
+  const month = String(buildDate.getUTCMonth() + 1).padStart(2, '0');
+  return `${day}${month}${buildDate.getUTCFullYear()}`;
 }
 
 export default defineConfig({
