@@ -290,9 +290,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 v{__APP_VERSION__}
               </Text>
               <Divider mb="xs" />
-              <Text size="9px" c="dimmed" ta="center" py={4} style={{ opacity: 0.4 }}>
-                v{__APP_VERSION__}
-              </Text>
               <NavLink
                 label="Обратная связь"
                 leftSection={<IconMessageReport size={18} />}
