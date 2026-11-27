@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TextInput, Select, Group, Button, Box, Stack } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconCalendar, IconHash } from '@tabler/icons-react';
@@ -21,8 +21,8 @@ const PRIORITY_OPTIONS = [
 interface Props {
   onClose: () => void;
   onAdded?: () => void;
-  defaultDueDate?: Date;
-  defaultProjectId?: string;
+  defaultDueDate?: Date | null;
+  defaultProjectId?: string | null;
   defaultPriority?: number;
   defaultGoalId?: string;
 }
@@ -32,14 +32,30 @@ export function InlineAddTask({
   onAdded,
   defaultDueDate,
   defaultProjectId,
-  defaultPriority = 0,
+  defaultPriority,
   defaultGoalId,
 }: Props) {
   const { addTask, projects, goals, fetchGoals, refreshAllCounts } = useTaskStore();
+  const defaultDateKey = defaultDueDate === undefined ? undefined
+    : defaultDueDate === null ? null : toNoonUTC(defaultDueDate);
+  const getDefaults = useCallback(() => {
+    const last = useTaskStore.getState().getCreationDefaults();
+    // Stored dates represent calendar dates, independent of the browser timezone.
+    const inheritedDate = last?.due_date
+      ? new Date(`${last.due_date.slice(0, 10)}T00:00:00`)
+      : null;
+    return {
+      priority: String(defaultPriority !== undefined ? defaultPriority : last?.priority ?? 0),
+      dueDate: defaultDateKey !== undefined
+        ? (defaultDateKey === null ? null : new Date(`${defaultDateKey.slice(0, 10)}T00:00:00`))
+        : inheritedDate,
+      projectId: defaultProjectId !== undefined ? defaultProjectId : last?.project_id ?? null,
+    };
+  }, [defaultDateKey, defaultProjectId, defaultPriority]);
   const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState(String(defaultPriority));
-  const [dueDate, setDueDate] = useState<Date | null>(defaultDueDate || null);
-  const [projectId, setProjectId] = useState<string | null>(defaultProjectId || null);
+  const [priority, setPriority] = useState(() => getDefaults().priority);
+  const [dueDate, setDueDate] = useState<Date | null>(() => getDefaults().dueDate);
+  const [projectId, setProjectId] = useState<string | null>(() => getDefaults().projectId);
   const [goalId, setGoalId] = useState<string | null>(defaultGoalId || null);
   const [recurrence, setRecurrence] = useState<string | null>(null);
 
@@ -48,11 +64,12 @@ export function InlineAddTask({
   }, []);
 
   useEffect(() => {
-    setDueDate(defaultDueDate || null);
-    setProjectId(defaultProjectId || null);
-    setPriority(String(defaultPriority));
+    const defaults = getDefaults();
+    setDueDate(defaults.dueDate);
+    setProjectId(defaults.projectId);
+    setPriority(defaults.priority);
     setGoalId(defaultGoalId || null);
-  }, [defaultDueDate, defaultProjectId, defaultPriority, defaultGoalId]);
+  }, [getDefaults, defaultGoalId]);
 
   const handleAdd = async () => {
     if (!title.trim()) return;
@@ -66,9 +83,10 @@ export function InlineAddTask({
     });
     refreshAllCounts();
     setTitle('');
-    setPriority(String(defaultPriority));
-    setDueDate(defaultDueDate || null);
-    setProjectId(defaultProjectId || null);
+    const defaults = getDefaults();
+    setPriority(defaults.priority);
+    setDueDate(defaults.dueDate);
+    setProjectId(defaults.projectId);
     setGoalId(defaultGoalId || null);
     setRecurrence(null);
     onAdded?.();

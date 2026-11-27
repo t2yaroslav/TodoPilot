@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import * as api from '@/api/client';
+import { useAuthStore } from './authStore';
+
+type CreationDefaults = Pick<Task, 'due_date' | 'priority' | 'project_id'>;
 
 export interface Task {
   id: string;
@@ -134,6 +137,8 @@ export interface EntityLinks {
 
 interface TaskStore {
   tasks: Task[];
+  creationDefaultsByUser: Record<string, CreationDefaults>;
+  getCreationDefaults: () => CreationDefaults | undefined;
   projects: Project[];
   goals: Goal[];
   projectTaskCounts: Record<string, number>;
@@ -169,6 +174,11 @@ interface TaskStore {
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
+  creationDefaultsByUser: {},
+  getCreationDefaults: () => {
+    const userId = useAuthStore.getState().user?.id;
+    return userId ? get().creationDefaultsByUser[userId] : undefined;
+  },
   projects: [],
   goals: [],
   projectTaskCounts: {},
@@ -184,8 +194,16 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   addTask: async (taskData) => {
+    // Capture the creator before awaiting so an account switch cannot leak defaults.
+    const userId = useAuthStore.getState().user?.id;
     const { data } = await api.createTask(taskData);
-    set({ tasks: [...get().tasks, data] });
+    set((state) => ({
+      tasks: [...state.tasks, data],
+      creationDefaultsByUser: userId ? {
+        ...state.creationDefaultsByUser,
+        [userId]: { due_date: data.due_date, priority: data.priority, project_id: data.project_id },
+      } : state.creationDefaultsByUser,
+    }));
     return data;
   },
 
