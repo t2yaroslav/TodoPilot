@@ -286,7 +286,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </AppShell.Section>
 
             <AppShell.Section>
-              <Text size="10px" lh={1} c="dimmed" ta="right" mb={2}>
+              <Text size="7px" lh={1} c="dimmed" ta="right" mb={2}>
                 v{__APP_VERSION__}
               </Text>
               <Divider mb="xs" />
