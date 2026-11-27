@@ -1,22 +1,14 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { execSync } from 'child_process';
 
 const hotReload = process.env.HOT_RELOAD !== 'false';
 
 function getAppVersion(): string {
-  if (process.env.APP_VERSION) {
-    return process.env.APP_VERSION;
-  }
-  try {
-    return execSync('git log -1 --format=%cd --date=format:%d.%m.%Y', { encoding: 'utf-8' }).trim();
-  } catch {
-    const now = new Date();
-    const d = now.getDate().toString().padStart(2, '0');
-    const m = (now.getMonth() + 1).toString().padStart(2, '0');
-    return `${d}.${m}.${now.getFullYear()}`;
-  }
+  const buildDate = new Date();
+  const day = String(buildDate.getUTCDate()).padStart(2, '0');
+  const month = String(buildDate.getUTCMonth() + 1).padStart(2, '0');
+  return `${day}${month}${buildDate.getUTCFullYear()}`;
 }
 
 export default defineConfig({
