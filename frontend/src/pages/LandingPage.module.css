@@ -1,10 +1,10 @@
-/* ── Global override: always white background ── */
+/* ── Landing palette ── */
 .landing {
-  --landing-bg: #ffffff;
+  --landing-bg: #fdfdff;
   --landing-text: #1a1b1e;
   --landing-muted: #555;
-  --landing-border: #e9ecef;
-  --landing-card-bg: #f8f9fa;
+  --landing-border: #e2e5f0;
+  --landing-card-bg: #f2f4fa;
   --landing-accent: var(--mantine-color-indigo-6);
   --landing-accent-light: var(--mantine-color-indigo-0);
 
@@ -161,36 +161,39 @@
   flex-wrap: wrap;
 }
 
-/* ── Section image ── */
-.sectionImage {
-  max-width: 960px;
-  margin: 48px auto 0;
-  border-radius: 16px;
-  border: 1px solid var(--landing-border);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  background: var(--landing-card-bg);
+/* ── Screenshot frames: a soft surround bridges the light page and dark UI ── */
+.sectionImage,
+.sectionImageSmall {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: clamp(8px, 1.8vw, 18px);
+  border: 1px solid #d8deef;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #e8ecfa, #f5f3fb 55%, #dfe5f4);
+  box-shadow:
+    0 24px 56px -24px rgba(35, 43, 78, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.sectionImage img {
-  display: block;
-  width: 100%;
-  height: auto;
+.sectionImage {
+  max-width: 960px;
+  margin: 56px auto 0;
 }
 
 .sectionImageSmall {
   max-width: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--landing-border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-  background: var(--landing-card-bg);
 }
 
+.sectionImage img,
 .sectionImageSmall img {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   height: auto;
+  border: 1px solid #363946;
+  border-radius: 12px;
+  background: #1a1b1e;
+  box-shadow: 0 8px 20px rgba(20, 24, 42, 0.2);
 }
 
 /* ── Image placeholder ── */
@@ -242,7 +245,7 @@
 }
 
 .sectionAlt {
-  background: var(--landing-card-bg);
+  background: linear-gradient(180deg, var(--landing-bg), var(--landing-card-bg) 12%, var(--landing-card-bg) 88%, var(--landing-bg));
 }
 
 .sectionAltInner {
@@ -322,8 +325,8 @@
 /* ── Features with image (split layout) ── */
 .featuresSplit {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 64px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
   align-items: center;
 }
 
@@ -520,6 +523,21 @@
 }
 
 @media (max-width: 768px) {
+  .sectionImage,
+  .sectionImageSmall {
+    border-radius: 16px;
+    box-shadow: 0 16px 32px -20px rgba(35, 43, 78, 0.35);
+  }
+
+  .sectionImage {
+    margin-top: 36px;
+  }
+
+  .sectionImage img,
+  .sectionImageSmall img {
+    border-radius: 8px;
+  }
+
   .navLinks {
     display: none;
   }
